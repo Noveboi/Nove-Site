@@ -1,0 +1,28 @@
+﻿@page "/"
+
+<PageTitle>Home</PageTitle>
+
+<h1 class="text-center text-light p-3 m-0 fw-light">Novè's Collection</h1>
+<div class="d-flex justify-content-evenly align-items-center flex-wrap align-content-center">
+	@if (Applets == null)
+	{
+		<p class="fw-bold h5">Loading applets, please wait...</p>
+	} 
+	else
+	{
+		@foreach (var applet in Applets)
+		{
+			<NavBox Applet="applet"></NavBox>
+		}
+	}
+</div>
+
+@code {
+	IEnumerable<AppletModel> Applets;
+
+	protected override Task OnInitializedAsync()
+	{
+		Applets = AppletFinder.GetApplets();
+		return Task.CompletedTask;
+	}
+}

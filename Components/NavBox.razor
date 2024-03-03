@@ -1,0 +1,14 @@
+﻿@if (Applet is not null) 
+{
+	<div class="card w-50 m-1">
+		<div class="card-body">
+			<h5 class="card-title text-center fw-bold">@Applet.Title</h5>
+			<p class="card-text fw-light">@Applet.Description</p>
+			<a href="@Applet.Href" class="btn btn-primary">Go to applet</a>
+		</div>
+	</div>
+}
+@code {
+	[Parameter]
+	public AppletModel? Applet { get; set; }
+}
