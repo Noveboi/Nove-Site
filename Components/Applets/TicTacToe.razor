@@ -5,213 +5,182 @@
 	"Simple Tic-Tac-Toe game!",
 	"/applets/tictactoe"
 )]
+@using LearningBlazor.Hubs
 @using LearningBlazor.Utilities.TicTacToe
-@using Microsoft.AspNetCore.SignalR.Client
-@inject NavigationManager NavManager
-@implements IAsyncDisposable
+@using LearningBlazor.Utilities.Base
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedSessionStorage SessionStorage
+@inherits GameComponent
 
 <PageTitle>Tic-Tac-Toe</PageTitle>
 <div class="d-flex align-items-center flex-column justify-content-center">
-	@if (board is not null && !requestedPlayAgain && gameState == TicTacToeGameState.Playing)
-	{
-		<div class="container w-25 h-25 align-self-center">
-			@for (int i = 0; i < 3; i++)
-			{
-				<div class="row flex-nowrap">
-					@for (int j = 0; j < 3; j++)
-					{
-						var row = i;
-						var col = j;
-						<div class="col p-0">
-							<button class="fw-light text-center border border-light m-0 w-100 h-100 text-light"
-									style="min-width: 80px; min-height: 80px; font-size:32px; @(isPlayerTurn ? "background-color: #cc12ff;" : "background-color: #aaaaaa;")"
-									disabled="@(isPlayerTurn == false)"
-									@onclick="() => HandleCellClick(row, col)">
-								@board[row, col]
-							</button>
-						</div>
-					}
-				</div>
-			}
-		</div>
-		<div class="container p-2 flex align-self-center"> 
-			<div class="row">
-				<div class="col">
-					<p class="fw-bold display-6"
-					style="@(isPlayerTurn ? "color: #cf2244" : "color: #eeeeee")">@username</p>
-				</div>
-				<div class="col">
-					<p class="fw-bold display-6"
-					   style="@(isPlayerTurn == false ? "color: #cf2244" : "color: #eeeeee")">
-							@opponentName
-					   </p>
-				</div>
+@if (board is not null && !requestedPlayAgain && gameState == GameState.Playing)
+{
+	<div class="container w-25 h-25 align-self-center">
+		@for (int i = 0; i < 3; i++)
+		{
+			<div class="row flex-nowrap">
+				@for (int j = 0; j < 3; j++)
+				{
+					var row = i;
+					var col = j;
+					<div class="col p-0">
+						<button class="fw-light text-center border border-light m-0 w-100 h-100 text-light"
+								style="min-width: 80px; min-height: 80px; font-size:32px; @(isPlayerTurn ? "background-color: #cc12ff;" : "background-color: #aaaaaa;")"
+								disabled="@(isPlayerTurn == false)"
+								@onclick="() => HandleCellClickAndSend(row, col)">
+							@board[row, col]
+						</button>
+					</div>
+				}
+			</div>
+		}
+	</div>
+	<div class="container p-2 flex align-self-center"> 
+		<div class="row">
+			<div class="col">
+				<p class="fw-bold display-6"
+					style="@(isPlayerTurn ? "color: #cf2244" : "color: #eeeeee")">
+						@username
+				</p>
+			</div>
+			<div class="col">
+				<p class="fw-bold display-6"
+					style="@(isPlayerTurn == false ? "color: #cf2244" : "color: #eeeeee")">
+						@opponentName
+					</p>
 			</div>
 		</div>
-	}
-	else if (board is null)
+	</div>
+}
+else if (board is null)
+{
+	<h1 class="text-primary">Initializing game, please wait...</h1>
+}
+else if (requestedPlayAgain)
+{
+	<h1 class="text-primary">Waiting for other player to confirm...</h1>
+}
+else if (gameState == GameState.InLobby)
+{
+	<GameLobby Games="lobbyGames" GameJoinClick="OnGameJoinClick"/>
+	<button class="btn btn-primary" @onclick="CreateNewGame">Create a new game</button>
+}
+else if (gameState == GameState.Waiting)
+{
+	<h2 class="text-light">Waiting for another player to join...</h2>		
+}
+else
+{
+	if (gameState == GameState.Win)
 	{
-		<h1 class="text-primary">Initializing game, please wait...</h1>
+		<p class="text-light display-4">You Win!</p>
 	}
-	else if (requestedPlayAgain)
+		if (gameState == GameState.Loss)
 	{
-		<h1 class="text-primary">Waiting for other player to confirm...</h1>
+		<p class="text-light display-4">You Lose!</p>
 	}
-	else if (gameState == TicTacToeGameState.Waiting)
+		if (gameState == GameState.Tie)
 	{
-		if (username == string.Empty)
-		{
-			// Temporary username form
-			<form @onsubmit="SendUsername">
-				<input type="text" @bind="username"/>
-			</form>
-		}
-		else
-		{
-			<p class="text-light display-4">Waiting for player to join...</p>
-		}
+		<p class="text-light display-4">It's a tie!</p>
 	}
-	else
-	{
-		if (gameState == TicTacToeGameState.Win)
-		{
-			<p class="text-light display-4">You Win!</p>
-		}
-		if (gameState == TicTacToeGameState.Loss)
-		{
-			<p class="text-light display-4">You Lose!</p>
-		}
-		if (gameState == TicTacToeGameState.Tie)
-		{
-			<p class="text-light display-4">It's a tie!</p>
-		}
-		<button class="btn btn-primary" @onclick="SendPlayAgainRequest"> Play Again </button>
-		<button class="btn btn-primary" @onclick="HandleExit"> Exit Game </button>
-	}
+	<button class="btn btn-primary" @onclick="SendPlayAgainRequest"> Play Again </button>
+	<button class="btn btn-primary" @onclick="HandleExit"> Exit Game </button>
+}
 </div>
 
 @code {
-	TicTacToeGameState gameState = TicTacToeGameState.Waiting;
 	bool requestedPlayAgain = false;
-
-	HubConnection? hubConnection;
 	TicTacToeBoard board = new TicTacToeBoard();
 	bool isPlayerTurn = false;
 
-	string username = string.Empty;
 	string opponentName = string.Empty;
+
+	public const string RECEIVERS_MARK = nameof(ReceiveMarkData);
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
 		if (firstRender)
 		{
-			hubConnection = new HubConnectionBuilder()
-				.WithUrl(NavManager.ToAbsoluteUri("/tictactoehub"))
-				.WithAutomaticReconnect()
-				.Build();
+			await BuildHubConnection("/tictactoehub");
 
-			hubConnection.On<int, int>("ReceiveMarkData", async (i,j) =>
-			{
-				board.OpponentMark(i, j);
-				isPlayerTurn = true;
-				await InvokeAsync(StateHasChanged);
-			});
+			AddReceiver(nameof(ReceiveResetGame), ReceiveResetGame);
+			AddReceiver<string>(nameof(ReceiveSymbol), ReceiveSymbol);
+			AddReceiver<int, int>(nameof(ReceiveMarkData), ReceiveMarkData);
+			AddReceiver<string>(nameof(ReceiveOpponentId), ReceiveOpponentId);
 
-			hubConnection.On<string>("ReceiveSymbol", async s =>
-			{
-				board.Symbol = s;
-				if (s == "O")
-				{
-					isPlayerTurn = true;
-					await InvokeAsync(StateHasChanged);
-				}
-			});
-
-			hubConnection.On("ReceiveResetGame", async () =>
-			{
-				requestedPlayAgain = false;
-
-				gameState = TicTacToeGameState.Playing;
-				board.Reset();
-				if (board.Symbol == "O")
-					isPlayerTurn = true;
-				else
-					isPlayerTurn = false;
-				await InvokeAsync(StateHasChanged);
-			});
-
-			hubConnection.On<string>("ReceiveStartGame", async op =>
-			{
-				gameState = TicTacToeGameState.Playing;
-				opponentName = op;
-				await InvokeAsync(StateHasChanged);
-			});
-
-			hubConnection.On<string, string>("ReceiveStartGameAndOpponentId", async (opName, opId) =>
-			{
-				if (hubConnection is not null)
-					await hubConnection.SendAsync("SetOpponentInContext", opId);
-
-				gameState = TicTacToeGameState.Playing;
-				opponentName = opName;
-				await InvokeAsync(StateHasChanged);
-			});
-
-			hubConnection.On("PlayerDisconnected", async () =>
-			{
-				if (hubConnection is not null)
-					await hubConnection.SendAsync("HandleOpponentDisconnect");
-
-				gameState = TicTacToeGameState.Waiting;
-				opponentName = string.Empty;
-				board.Reset();
-				requestedPlayAgain = false;
-				await InvokeAsync(StateHasChanged);
-			});
-
-			board.Win += (s, e) => gameState = TicTacToeGameState.Win;
-			board.Lose += (s, e) => gameState = TicTacToeGameState.Loss;
-			board.Tie += (s, e) => gameState = TicTacToeGameState.Tie;
-
-			await hubConnection.StartAsync();
+			board.Win += (s, e) => gameState = GameState.Win;
+			board.Lose += (s, e) => gameState = GameState.Loss;
+			board.Tie += (s, e) => gameState = GameState.Tie;
 		}
 	}
 
-	private async Task HandleExit()
+	protected override async Task PlayerDisconnected()
 	{
-		if (hubConnection is not null)
-			await hubConnection.StopAsync();
+		await base.PlayerDisconnected();
 
-		NavManager.NavigateTo("/");
+		gameState = GameState.Waiting;
+		isPlayerTurn = false;
+		board.Reset();
+		requestedPlayAgain = false;
+		await InvokeAsync(StateHasChanged);
 	}
 
-	private async Task SendUsername()
+	protected async Task ReceiveOpponentId(string id)
 	{
-		if (hubConnection is not null)
-			await hubConnection.SendAsync("SendUsername", username);
+		await SendToHub(arg1: id);
+	}
+
+	protected override async Task PlayerConnected(string json)
+	{
+		await base.PlayerConnected(json);
+		isPlayerTurn = true;
+		opponentName = gamePlayers[1].Name;
+	}
+
+	protected override async Task ClientConnected(string json)
+	{
+		await base.ClientConnected(json);
+		opponentName = gamePlayers[0].Name;
 	}
 
 	private async Task SendPlayAgainRequest()
 	{
-		if (hubConnection is not null)
-			await hubConnection.SendAsync("SendPlayAgainRequest");
+		await SendToHub();
 
+		// ADD GAME STATE HERE! REMOVE REQUESTPLAYAGAIN VARIABLE!
 		requestedPlayAgain = true;
 		await InvokeAsync(StateHasChanged);
 	}
 
-	private async Task HandleCellClick(int i, int j)
+	private async Task HandleCellClickAndSend(int i, int j)
 	{
 		isPlayerTurn = false;
 		board.Mark(i, j);
 
-		if (hubConnection is not null)
-			await hubConnection.SendAsync("SendMarkData", i, j);
+		await SendToHub(i, j, TicTacToeHub.SENDER_MARK);
 	}
 
-	public async ValueTask DisposeAsync()
+	private async Task ReceiveResetGame()
 	{
-		if (hubConnection is not null)
-			await hubConnection.DisposeAsync();
+		requestedPlayAgain = false;
+
+		gameState = GameState.Playing;
+		board.Reset();
+		if (board.Symbol == "O")
+			isPlayerTurn = true;
+		else
+			isPlayerTurn = false;
+		await InvokeAsync(StateHasChanged);
+	} 
+
+	private async Task ReceiveSymbol(string s) =>
+		board.Symbol = s;
+
+	private async Task ReceiveMarkData(int i, int j)
+	{
+		board.OpponentMark(i, j);
+		isPlayerTurn = true;
+		await InvokeAsync(StateHasChanged);
 	}
 }

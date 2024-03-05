@@ -1,0 +1,7 @@
+﻿#game-row-available:hover {
+    cursor: pointer;
+}
+
+#game-row-unavailable:hover {
+    cursor: not-allowed;
+}

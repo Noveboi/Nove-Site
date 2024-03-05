@@ -1,33 +1,46 @@
-﻿using LearningBlazor.Utilities.TicTacToe;
-using Microsoft.AspNetCore.Mvc.Formatters;
+﻿using LearningBlazor.Components.Applets;
+using LearningBlazor.Utilities.Base;
+using LearningBlazor.Utilities.TicTacToe;
 using Microsoft.AspNetCore.SignalR;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks.Sources;
+using Newtonsoft.Json;
 
 namespace LearningBlazor.Hubs;
-public class TicTacToeHub : Hub
+public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IGameHub
 {
-	private static readonly List<TicTacToeGame> Games = [];
-	private static readonly Dictionary<string, TicTacToePlayer> Players = [];
-	private static readonly List<TicTacToePlayer> WaitingPlayers = [];
-	private static readonly object gameSearchLock = new(); // ! Mutex for avoiding two or more players finding the same game at the same time
+	protected static readonly List<TicTacToeGame> Games = [];
+	protected static readonly Dictionary<string, TicTacToePlayer> Players = [];
+
+	public const string SENDER_CREATE_NEW_GAME = nameof(CreateNewGame);
+	public const string SENDER_CREATE_PLAYER = nameof(CreatePlayer);
+	public const string SENDER_PLAYER_JOIN = nameof(ClientJoinGame);
+	public const string SENDER_RECEIVE_OPPONENT_ID = nameof(ReceiveOpponentId);
+	public const string SENDER_MARK = nameof(MarkBoardAndSend);
+
+	private string OpponentId
+	{
+		get
+		{
+			string id = Context.Items[ItemKeys.Opponent] as string ?? string.Empty;
+			return id;
+		}
+		set => Context.Items[ItemKeys.Opponent] = value;
+	}
 
 	public override async Task OnConnectedAsync()
 	{
-		Context.Items["UserInitialized"] = false;
-		Context.Items["Game"] = null;
-		Context.Items["Opponent"] = null;
+		IsUserPlaying = false;
+
+		await SendGameListToClient(Games);
 		await base.OnConnectedAsync();
 	}
 
 	public override async Task OnDisconnectedAsync(Exception? exception)
 	{
-		object userInWaiting = Context.Items["UserInitialized"] ?? false;
-		if ((bool)userInWaiting == false)
+		if (IsUserPlaying == false)
 			return;
 
-		if (Context.Items["Opponent"] is string opponentId)
-			await Clients.Client(opponentId).SendAsync("PlayerDisconnected");
+		if (OpponentId != string.Empty)
+			await Clients.Client(OpponentId).SendAsync(GameComponent.RECEIVERS_PLAYER_DISCONNECTED);
 
 		Players.Remove(Context.ConnectionId);
 		await base.OnDisconnectedAsync(exception);
@@ -36,107 +49,61 @@ public class TicTacToeHub : Hub
 	#region Client -> Server Methods
 	public async Task SendPlayAgainRequest()
 	{
-		var game = Context.Items["Game"] as TicTacToeGame ?? throw new Exception("Game is null when sending a play again request!!!");
-
-		if (game.RequestPlayAgain())
+		if (Game.RequestPlayAgain())
 		{
-            foreach (var p in game.Players)
-            {
-				await Clients.Client(p.Id).SendAsync("ReceiveResetGame");
-            }
-        }
+			await Clients.Caller.SendAsync("ReceiveResetGame");
+			await Clients.Client(OpponentId).SendAsync("ReceiveResetGame");
+		}
 	}
 
-	public void HandleOpponentDisconnect()
+	public Task HandleOtherPlayerDisconnect()
 	{
 		var player = Players[Context.ConnectionId];
-		WaitingPlayers.Add(player);
-		var game = Context.Items["Game"] as TicTacToeGame ?? throw new Exception("Game is null when opponent disconnected!");
-		game.RemoveOpponentOf(player);
+		Game.RemoveOpponentOf(player);
+
+		return Task.CompletedTask;
 	}
 
-	public async Task SendMarkData(int i, int j)
-    {
-		var opponent = Context.Items["Opponent"] as string ?? throw new Exception("Opponent ID is null when sending mark data!!!");
-        await Clients.Client(opponent).SendAsync("ReceiveMarkData", i, j);
-    }
+	public async Task MarkBoardAndSend(int i, int j) =>
+        await Clients.Client(OpponentId).SendAsync(TicTacToe.RECEIVERS_MARK, i, j);
 
-	public async Task SendUsername(string username)
+	public void ReceiveOpponentId(string opponentId) => 
+		OpponentId = opponentId;
+
+	public Task CreatePlayer(string username)
 	{
-		await AssignPlayerToMatch(username);
-		Context.Items["UserInitialized"] = true;
+		Players[Context.ConnectionId] = new TicTacToePlayer(Context.ConnectionId, username);
+		Player = Players[Context.ConnectionId];
+		return Task.CompletedTask;
 	}
-
-	public void SetOpponentInContext(string opponentId) => Context.Items["Opponent"] = opponentId;
-	#endregion
-
-	#region Server Methods
-	private async Task SendSymbolToClient(string symbol)
+	public async Task ClientJoinGame(string gameNameId)
 	{
+		var game = Games.FirstOrDefault(g => g.NameId == gameNameId)
+			?? throw new Exception("Game not found!");
+
+		Game = game;
+
+		await NotifyPlayersOfConnect();
+		game.Players.Add(Player);
+		OpponentId = game.Players[0].Id;
+
+		string symbol = Random.Shared.Next(0, 2) == 1 ? "X" : "O";
+		string opponentSymbol = symbol == "X" ? "O" : "X";
+
+		await Clients.Client(OpponentId).SendAsync("ReceiveOpponentId", Context.ConnectionId);
 		await Clients.Caller.SendAsync("ReceiveSymbol", symbol);
+		await Clients.Client(OpponentId).SendAsync("ReceiveSymbol", opponentSymbol);
+		await NotifyGameStart();
 	}
 
-	private async Task AssignPlayerToMatch(string username)
+	public async Task CreateNewGame()
 	{
-		var player = new TicTacToePlayer(Context.ConnectionId, username);
-		Players[Context.ConnectionId] = player;
-
-		if (WaitingPlayers.Count == 0)
-		{
-			await InitializeNewGame(player);
-
-			return;
-		}
-
-		TicTacToePlayer? foundOpponent = null;
-		bool noValidPlayersInQueue = false;
-		if (WaitingPlayers.Count == 0)
-		{
-			noValidPlayersInQueue = true;
-		}
-		else
-		{
-			lock (gameSearchLock) 
-			{
-				foundOpponent = WaitingPlayers[0];
-				WaitingPlayers.RemoveAt(0);
-				while (!Players.ContainsKey(foundOpponent!.Id) && WaitingPlayers.Count > 0)
-				{
-					foundOpponent = WaitingPlayers[0];
-					WaitingPlayers.RemoveAt(0);
-				}
-
-				noValidPlayersInQueue = !Players.ContainsKey(foundOpponent!.Id) && WaitingPlayers.Count == 0;
-			}
-		}
-
-		if (noValidPlayersInQueue || foundOpponent is null)
-		{
-			await InitializeNewGame(player);
-			return;
-		}
-
-		player.Symbol = "O";
-		var game = Games.First(g => g.Players.Contains(foundOpponent));
-		game.Players.Add(player);
-		Context.Items["Game"] = game;
-		Context.Items["Opponent"] = foundOpponent.Id;
-
-		await SendSymbolToClient("O");
-		await Clients.Caller.SendAsync("ReceiveStartGame", foundOpponent.Name);
-		await Clients.Client(foundOpponent.Id).SendAsync("ReceiveStartGameAndOpponentId", player.Name, player.Id);
-	}
-
-	private async Task InitializeNewGame(TicTacToePlayer player)
-	{
-		player.Symbol = "X";
-		await SendSymbolToClient("X");
-
-		WaitingPlayers.Add(player);
-
-		var game = new TicTacToeGame(player);
+		var game = new TicTacToeGame(Player);
 		Games.Add(game);
-		Context.Items["Game"] = game;
-	}
+		Game = game;
+
+		// For anyone else in this hub, send the updated game list 
+		await Clients.Others.SendAsync(GameComponent.RECEIVERS_UPDATE_GAME_LIST, JsonConvert.SerializeObject(game));
+	} 
 	#endregion
 }

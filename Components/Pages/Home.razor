@@ -1,28 +1,52 @@
 ﻿@page "/"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedSessionStorage sessionStorage
 
 <PageTitle>Home</PageTitle>
 
-<h1 class="text-center text-light p-3 m-0 fw-light">Novè's Collection</h1>
-<div class="d-flex justify-content-evenly align-items-center flex-wrap align-content-center">
-	@if (Applets == null)
+<div class="d-flex flex-column justify-content-evenly align-items-center flex-wrap align-content-center">
+
+	@if (submittedUsername == false)
 	{
-		<p class="fw-bold h5">Loading applets, please wait...</p>
-	} 
-	else
-	{
-		@foreach (var applet in Applets)
+		<p class="h3 text-light">Welcome! Before you start, please enter a username:</p>
+		<form @onsubmit="UsernameEntered">
+			<input type="text" @bind="username" class="form-text"/>
+		</form>
+	}
+	else {
+		<h1 class="text-center text-light p-3 m-0 fw-light">Novè's Collection</h1>
+
+		@if (Applets == null)
 		{
-			<NavBox Applet="applet"></NavBox>
+			<p class="fw-bold h5 text-light">Loading applets, please wait...</p>
+		} 
+		else
+		{
+			@foreach (var applet in Applets)
+			{
+				<NavBox Applet="applet"></NavBox>
+			}
 		}
 	}
 </div>
 
 @code {
 	IEnumerable<AppletModel> Applets;
+	bool submittedUsername = false;
+
+	string username = string.Empty;
 
 	protected override Task OnInitializedAsync()
 	{
 		Applets = AppletFinder.GetApplets();
 		return Task.CompletedTask;
+	}
+
+	private async Task UsernameEntered()
+	{
+		await sessionStorage.SetAsync("username", username);
+		submittedUsername = true;
+		await InvokeAsync(StateHasChanged);
 	}
 }

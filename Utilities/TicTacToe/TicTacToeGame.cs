@@ -1,17 +1,21 @@
-﻿namespace LearningBlazor.Utilities.TicTacToe;
-public class TicTacToeGame : IGame
+﻿using LearningBlazor.Utilities.Base;
+using Newtonsoft.Json;
+
+namespace LearningBlazor.Utilities.TicTacToe;
+public class TicTacToeGame : GameModel
 {
-    public TicTacToeGame(TicTacToePlayer player1) 
-    {
-        Players = [player1];
-    }
+    public TicTacToeGame() : base() { }
+    public TicTacToeGame(TicTacToePlayer player1) : base(player1) { }
 
-    public TicTacToeGame(TicTacToePlayer player1, TicTacToePlayer player2)
-    {
-        Players = [player1, player2];
-    }
+	public TicTacToeGame(TicTacToePlayer player1, TicTacToePlayer player2) : base(player1, player2) { }
 
-    public List<IPlayer> Players { get; }
+	public TicTacToeGame(string name, TicTacToePlayer player1) : base(name, player1) { }
+
+	public TicTacToeGame(string name, TicTacToePlayer player1, TicTacToePlayer player2) : base(name, player1, player2) { }
+
+    public override int PlayerCapacity => 2;
+
+    [JsonIgnore]
     public int PlayAgainRequests { get; private set; } = 0;
 
     public void RemoveOpponentOf(TicTacToePlayer player)

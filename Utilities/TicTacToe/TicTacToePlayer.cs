@@ -1,9 +1,12 @@
 ﻿
+using LearningBlazor.Utilities.Base;
+using Newtonsoft.Json;
+
 namespace LearningBlazor.Utilities.TicTacToe;
-public class TicTacToePlayer(string connectionId, string username) : IPlayer
+public class TicTacToePlayer : PlayerModel
 {
-	public string Id { get; } = connectionId;
-	public string Name { get; } = username;
+	public TicTacToePlayer(string connectionId, string username) : base(connectionId, username) { }
+
 	public string Symbol { get; set; } = string.Empty;
     public bool HasRequestedPlayAgain { get; set; } = false;
 }
