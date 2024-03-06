@@ -6,6 +6,8 @@ using System.Runtime.CompilerServices;
 using LearningBlazor.Hubs;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using LearningBlazor.Utilities.TicTacToe;
+using Microsoft.JSInterop;
+using Microsoft.AspNetCore.Components.Server.Circuits;
 
 namespace LearningBlazor.Utilities.Base;
 /// <summary>
@@ -21,6 +23,9 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 	private NavigationManager NavManager { get; set; } = default!;
 	[Inject]
 	private ProtectedSessionStorage SessionStorage { get; set; } = default!;
+	[Inject]
+	private IJSRuntime JS { get; set; } = default!;
+
 	private HubConnection? hubConnection;
 
 	protected GameState gameState = GameState.InLobby;
@@ -37,7 +42,13 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 
 	public const string SENDERS_JOIN_GAME = nameof(OnGameJoinClick);
 
-	protected async Task HandleExit()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+			await JS.InvokeVoidAsync("registerListeners", DotNetObjectReference.Create(this));
+    }
+
+    protected async Task HandleExit()
 	{
 		if (hubConnection is not null)
 			await hubConnection.StopAsync();
@@ -222,10 +233,18 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 
 	}
 
+	[JSInvokable]
+	public async Task OnBrowserTabClose()
+	{
+		if (hubConnection is not null)
+			await hubConnection.SendAsync(GameHub<TicTacToeGame, TicTacToePlayer>.SENDERS_PLAYER_BROWSER_CLOSE);
+	}
+
 	public async ValueTask DisposeAsync()
 	{
 		if (hubConnection is not null)
 		{
+			await JS.InvokeVoidAsync("unregisterListeners");
 			await hubConnection.DisposeAsync();
 			GC.SuppressFinalize(this);
 		}

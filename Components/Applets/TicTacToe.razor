@@ -100,10 +100,11 @@ else
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
+		await base.OnAfterRenderAsync(firstRender);
+
 		if (firstRender)
 		{
 			await BuildHubConnection("/tictactoehub");
-
 			AddReceiver(nameof(ReceiveResetGame), ReceiveResetGame);
 			AddReceiver<string>(nameof(ReceiveSymbol), ReceiveSymbol);
 			AddReceiver<int, int>(nameof(ReceiveMarkData), ReceiveMarkData);
