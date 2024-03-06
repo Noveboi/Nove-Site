@@ -18,6 +18,9 @@ namespace LearningBlazor.Utilities.Base;
 public class GameHub<TGame, TPlayer> : Hub where TGame : GameModel where TPlayer : PlayerModel
 {
 	#region Fields
+
+	public const string SENDERS_PLAYER_BROWSER_CLOSE = nameof(ForceDisconnectOnBrowserClose);
+
 	// HubCallerContext.Items Keys
 	protected enum ItemKeys
 	{
@@ -82,6 +85,9 @@ public class GameHub<TGame, TPlayer> : Hub where TGame : GameModel where TPlayer
 		await NotifyGamePlayers(GameComponent.RECEIVERS_PLAYER_DISCONNECTED, Player.Id);
 		await base.OnDisconnectedAsync(exception);
 	}
+
+	public async Task ForceDisconnectOnBrowserClose() =>
+		await OnDisconnectedAsync(new Exception("Player disconnected by means of closing browser or tab."));
 
 	/// <summary>
 	/// Serializes the 'Games' list into JSON and sends it to the client associated with the hub

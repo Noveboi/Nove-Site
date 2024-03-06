@@ -15,6 +15,23 @@
 <body>
     <Routes />
     <script src="_framework/blazor.web.js"></script>
+    <script>
+        window.registerListeners = function (dotNetObject) {
+            window.addEventListener("beforeunload", (ev) => {
+                handleBeforeUnload(ev, dotNetObject);
+            });
+        }
+
+        window.unregisterListeners = function () {
+            window.removeEventListener("beforeunload", (ev) => {
+                handleBeforeUnload(ev, dotNetObject);
+            });
+        }
+
+        function handleBeforeUnload(ev, dotNetObject) {
+            dotNetObject.invokeMethodAsync("OnBrowserTabClose");
+        }
+    </script>
 </body>
 
 </html>
