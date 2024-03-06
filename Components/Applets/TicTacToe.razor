@@ -115,9 +115,9 @@ else
 		}
 	}
 
-	protected override async Task PlayerDisconnected()
+	protected override async Task PlayerDisconnected(string playerName)
 	{
-		await base.PlayerDisconnected();
+		await base.PlayerDisconnected(playerName);
 
 		gameState = GameState.Waiting;
 		isPlayerTurn = false;

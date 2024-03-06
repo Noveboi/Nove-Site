@@ -62,6 +62,27 @@ public class GameHub<TGame, TPlayer> : Hub where TGame : GameModel where TPlayer
 	#endregion
 
 	#region Server-Only Methods
+
+	private async Task NotifyGamePlayers(string methodName)
+	{
+		var gamePlayers = Game.Players.Select(p => p.Id);
+		await Clients.Clients(gamePlayers).SendAsync(methodName);
+	}
+
+	private async Task NotifyGamePlayers(string methodName, object? arg1)
+	{
+		var gamePlayers = Game.Players.Select(p => p.Id);
+		await Clients.Clients(gamePlayers).SendAsync(methodName, arg1);
+	}
+
+	public override async Task OnDisconnectedAsync(Exception? exception)
+	{
+		Game.Players.Remove(Player);
+
+		await NotifyGamePlayers(GameComponent.RECEIVERS_PLAYER_DISCONNECTED, Player.Id);
+		await base.OnDisconnectedAsync(exception);
+	}
+
 	/// <summary>
 	/// Serializes the 'Games' list into JSON and sends it to the client associated with the hub
 	/// </summary>
@@ -73,10 +94,7 @@ public class GameHub<TGame, TPlayer> : Hub where TGame : GameModel where TPlayer
 
 	protected async Task NotifyGameStart()
 	{
-		foreach (var player in Game.Players)
-		{
-			await Clients.Client(player.Id).SendAsync(GameComponent.RECEIVERS_BEGIN_GAME);
-		}
+		await NotifyGamePlayers(GameComponent.RECEIVERS_BEGIN_GAME); 
 	}
 
 	protected async Task NotifyPlayersOfConnect()
@@ -87,10 +105,7 @@ public class GameHub<TGame, TPlayer> : Hub where TGame : GameModel where TPlayer
 			?? throw new Exception("nuh uh uh!");
 
 		await Clients.Caller.SendAsync(GameComponent.RECEIVERS_CLIENT_CONNECTED, gamePlayersJson);
-		foreach (var player in Game.Players)
-		{
-			await Clients.Client(player.Id).SendAsync(GameComponent.RECEIVERS_PLAYER_CONNECTED, playerJson);
-		}
+		await NotifyGamePlayers(GameComponent.RECEIVERS_PLAYER_CONNECTED, playerJson);
 	}
 	#endregion
 }

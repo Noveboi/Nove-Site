@@ -69,6 +69,7 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 		hubConnection.On<string>(RECEIVERS_GET_GAME_LIST, GetGameList);
 		hubConnection.On<string>(RECEIVERS_PLAYER_CONNECTED, PlayerConnected);
 		hubConnection.On<string>(RECEIVERS_CLIENT_CONNECTED, ClientConnected);
+		hubConnection.On<string>(RECEIVERS_PLAYER_DISCONNECTED, PlayerDisconnected);
 	}
 
 	#region Receiver & Sender Wrappers
@@ -174,12 +175,15 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 		await InvokeAsync(StateHasChanged);
 	}
 
-	protected virtual async Task PlayerDisconnected()
+	protected virtual async Task PlayerDisconnected(string playerId)
 	{
 		if (hubConnection is not null)
 			await hubConnection.SendAsync(RECEIVERS_PLAYER_DISCONNECTED);
 
-		gamePlayers.Clear();
+		var playerToRemove = gamePlayers.FirstOrDefault(p => p.Id == playerId)
+			?? throw new Exception("Couldn't find player to remove from gamePlayers");
+
+		gamePlayers.Remove(playerToRemove);
 	}
 
 	private async void GetGameList(string json)

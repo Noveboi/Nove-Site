@@ -1,5 +1,4 @@
-﻿using LearningBlazor.Components.Applets;
-using LearningBlazor.Utilities.Base;
+﻿using LearningBlazor.Utilities.Base;
 using LearningBlazor.Utilities.TicTacToe;
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
@@ -36,12 +35,6 @@ public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IGameHub
 
 	public override async Task OnDisconnectedAsync(Exception? exception)
 	{
-		if (IsUserPlaying == false)
-			return;
-
-		if (OpponentId != string.Empty)
-			await Clients.Client(OpponentId).SendAsync(GameComponent.RECEIVERS_PLAYER_DISCONNECTED);
-
 		Players.Remove(Context.ConnectionId);
 		await base.OnDisconnectedAsync(exception);
 	}
@@ -65,7 +58,7 @@ public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IGameHub
 	}
 
 	public async Task MarkBoardAndSend(int i, int j) =>
-        await Clients.Client(OpponentId).SendAsync(TicTacToe.RECEIVERS_MARK, i, j);
+        await Clients.Client(OpponentId).SendAsync(LearningBlazor.Components.Applets.TicTacToe.RECEIVERS_MARK, i, j);
 
 	public void ReceiveOpponentId(string opponentId) => 
 		OpponentId = opponentId;
