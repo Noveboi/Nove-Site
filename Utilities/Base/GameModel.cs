@@ -37,4 +37,7 @@ public class GameModel
     public string NameId { get; set; }
 
     public List<PlayerModel> Players { get; set; }
+
+    public override string ToString()
+        => $"\"{NameId}\" ({Players.Count} / {PlayerCapacity} Players)";
 }

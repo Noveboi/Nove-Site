@@ -5,4 +5,7 @@ public class PlayerModel(string connectionId, string username)
 {
     public string Id { get; set; } = connectionId;
     public string Name { get; set; } = username;
+
+    public override string ToString()
+        => $"[{Id}] {Name}";
 }

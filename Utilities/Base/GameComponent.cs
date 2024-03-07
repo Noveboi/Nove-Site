@@ -17,7 +17,7 @@ namespace LearningBlazor.Utilities.Base;
 ///		with <see cref="GameHub{TGame}"/> instances as well as providing some basic variables such as <see cref="GameState"/>
 /// </para>
 /// </summary>
-public class GameComponent : ComponentBase, IAsyncDisposable
+public class GameComponent<TPlayer> : ComponentBase, IAsyncDisposable where TPlayer : PlayerModel
 {
 	[Inject]
 	private NavigationManager NavManager { get; set; } = default!;
@@ -26,30 +26,36 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 	[Inject]
 	private IJSRuntime JS { get; set; } = default!;
 
+	[Inject]
+	protected ILogger<GameComponent<TPlayer>> Logger { get; set; } = default!;
+
 	private HubConnection? hubConnection;
 
 	protected GameState gameState = GameState.InLobby;
 	protected List<GameModel> lobbyGames = [];
 	protected List<PlayerModel> gamePlayers = [];
-	protected string username = string.Empty;
+	protected TPlayer? selfPlayer;
 
+	// Move these somewhere else (static class maybe?)
 	public const string RECEIVERS_BEGIN_GAME = nameof(BeginGame);
-	public const string RECEIVERS_CLIENT_CONNECTED = nameof(ClientConnected);
-	public const string RECEIVERS_PLAYER_CONNECTED = nameof(PlayerConnected);
-	public const string RECEIVERS_PLAYER_DISCONNECTED = nameof(PlayerDisconnected);
+	public const string RECEIVERS_SELF_CONNECTED = nameof(SelfConnected);
+	public const string RECEIVERS_OTHER_CONNECTED = nameof(OtherConnected);
+	public const string RECEIVERS_OTHER_DISCONNECTED = nameof(OtherDisconnected);
 	public const string RECEIVERS_GET_GAME_LIST = nameof(GetGameList);
+	public const string RECEIVERS_GET_PLAYER_MODEL = nameof(GetPlayerModel);
 	public const string RECEIVERS_UPDATE_GAME_LIST = nameof(UpdateGameList);
 
 	public const string SENDERS_JOIN_GAME = nameof(OnGameJoinClick);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+		if (firstRender)
 			await JS.InvokeVoidAsync("registerListeners", DotNetObjectReference.Create(this));
     }
 
     protected async Task HandleExit()
 	{
+		Logger.LogInformation("Exiting by means of redirect");
 		if (hubConnection is not null)
 			await hubConnection.StopAsync();
 
@@ -58,29 +64,35 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 
 	protected async Task BuildHubConnection(string hubRelativeUri)
 	{
-		var result = await SessionStorage.GetAsync<string>("username");
-		username = result.Success ? result.Value ?? throw new Exception("nuh uh") : "Result failed";
-
 		hubConnection = new HubConnectionBuilder()
 				.WithUrl(NavManager.ToAbsoluteUri(hubRelativeUri))
 				.WithAutomaticReconnect()
 				.Build();
 
-		SetUpReceivers();
-		await hubConnection.StartAsync();
-		await hubConnection.SendAsync(TicTacToeHub.SENDER_CREATE_PLAYER, username);
-	}
-
-	private void SetUpReceivers()
-	{
-		if (hubConnection is null)
-			throw new Exception("Hub connection was null when trying to wire up receivers for HubConnection.On()");
-
+		// Set up receivers
 		hubConnection.On(RECEIVERS_BEGIN_GAME, BeginGame);
 		hubConnection.On<string>(RECEIVERS_GET_GAME_LIST, GetGameList);
-		hubConnection.On<string>(RECEIVERS_PLAYER_CONNECTED, PlayerConnected);
-		hubConnection.On<string>(RECEIVERS_CLIENT_CONNECTED, ClientConnected);
-		hubConnection.On<string>(RECEIVERS_PLAYER_DISCONNECTED, PlayerDisconnected);
+		hubConnection.On<string>(RECEIVERS_OTHER_CONNECTED, OtherConnected);
+		hubConnection.On<string>(RECEIVERS_SELF_CONNECTED, SelfConnected);
+		hubConnection.On<string>(RECEIVERS_OTHER_DISCONNECTED, OtherDisconnected);
+		hubConnection.On<string>(RECEIVERS_GET_PLAYER_MODEL, GetPlayerModel);
+		hubConnection.On<string>(RECEIVERS_UPDATE_GAME_LIST, UpdateGameList);
+
+		await hubConnection.StartAsync();
+
+		// Get username from Session Storage
+		var result = await SessionStorage.GetAsync<string>("username");
+		string username = result.Success
+			? result.Value ?? throw new Exception("Retrieved NULL username from Session Storage!")
+			: "SES_STORAGE_FAILURE";
+
+#if DEBUG
+		Thread.CurrentThread.Name = $"{username}'s thread";
+#endif
+
+		await hubConnection.SendAsync(TicTacToeHub.SENDER_CREATE_PLAYER, username);
+
+		Logger.LogInformation("Succesfully built hub connection for player: \"{username}\"", username);
 	}
 
 	#region Receiver & Sender Wrappers
@@ -159,16 +171,13 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 	}
 
 	/// <summary>
-	/// This method will fire when another player has connected to the <see cref="GameModel"/> that the client is 
+	/// This method will fire when ANOTHER player has connected to the <see cref="GameModel"/> that the client is 
 	/// currently in
 	/// </summary>
-	/// <param name="connectionId">The <see cref="HubCallerContext.ConnectionId"/></param>
-	/// <param name="username">The player's username</param>
-	/// <exception cref="NotImplementedException"></exception>
-	protected virtual async Task PlayerConnected(string json)
+	public virtual async Task OtherConnected(string json)
 	{
 		if (hubConnection is not null)
-			await hubConnection.SendAsync(RECEIVERS_PLAYER_CONNECTED);
+			await hubConnection.SendAsync(RECEIVERS_OTHER_CONNECTED);
 
 		var player = JsonConvert.DeserializeObject<PlayerModel>(json)
 			?? throw new Exception("Deserialized into NULL obhect when trying to get Player!");
@@ -176,20 +185,20 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 		gamePlayers.Add(player);
 	} 
 
-	protected virtual async Task ClientConnected(string json)
+	protected virtual async Task SelfConnected(string json)
 	{
 		var playerList = JsonConvert.DeserializeObject<List<PlayerModel>>(json)
 			?? throw new Exception("Deserialized into NULL object when trying to get Player List!");
 
 		gamePlayers = playerList;
-		gamePlayers.Add(new PlayerModel(hubConnection!.ConnectionId!, username));
+		gamePlayers.Add(selfPlayer!);
 		await InvokeAsync(StateHasChanged);
 	}
 
-	protected virtual async Task PlayerDisconnected(string playerId)
+	protected virtual async Task OtherDisconnected(string playerId)
 	{
 		if (hubConnection is not null)
-			await hubConnection.SendAsync(RECEIVERS_PLAYER_DISCONNECTED);
+			await hubConnection.SendAsync(TicTacToeHub.SENDER_OTHER_DISCONNECTED, playerId);
 
 		var playerToRemove = gamePlayers.FirstOrDefault(p => p.Id == playerId)
 			?? throw new Exception("Couldn't find player to remove from gamePlayers");
@@ -197,7 +206,7 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 		gamePlayers.Remove(playerToRemove);
 	}
 
-	private async void GetGameList(string json)
+	private async Task GetGameList(string json)
 	{
 		var gameList = JsonConvert.DeserializeObject<List<GameModel>>(json)
 			?? throw new Exception("Deserialized into NULL object when trying to get Game List!");
@@ -206,7 +215,16 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 		await InvokeAsync(StateHasChanged);
 	}
 
-	private async void UpdateGameList(string json)
+	private Task GetPlayerModel(string json)
+	{
+		var player = JsonConvert.DeserializeObject<TPlayer>(json)
+			?? throw new Exception("Deserialized into NULL object when trying to get Player!");
+
+		selfPlayer = player;
+		return Task.CompletedTask;
+	}
+
+	private async Task UpdateGameList(string json)
 	{
 		var game = JsonConvert.DeserializeObject<GameModel>(json)
 			?? throw new Exception("Deserialized into NULL object when trying to get Game!");
@@ -221,7 +239,7 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 			await hubConnection.SendAsync(TicTacToeHub.SENDER_CREATE_NEW_GAME);
 
 		gameState = GameState.Waiting;
-		gamePlayers.Add(new PlayerModel(hubConnection!.ConnectionId!, username));
+		gamePlayers.Add(selfPlayer!);
 
 		await InvokeAsync(StateHasChanged);
 	}
@@ -230,14 +248,13 @@ public class GameComponent : ComponentBase, IAsyncDisposable
 	{
 		if (hubConnection is not null)
 			await hubConnection.SendAsync(TicTacToeHub.SENDER_PLAYER_JOIN, game.NameId);
-
 	}
 
 	[JSInvokable]
 	public async Task OnBrowserTabClose()
 	{
 		if (hubConnection is not null)
-			await hubConnection.SendAsync(GameHub<TicTacToeGame, TicTacToePlayer>.SENDERS_PLAYER_BROWSER_CLOSE);
+			await hubConnection.SendAsync(GameHubBase<TicTacToeGame, TicTacToePlayer>.SENDERS_PLAYER_BROWSER_CLOSE);
 	}
 
 	public async ValueTask DisposeAsync()

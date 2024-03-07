@@ -4,16 +4,18 @@ using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
 
 namespace LearningBlazor.Hubs;
-public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IGameHub
+public class TicTacToeHub : GameHubBase<TicTacToeGame, TicTacToePlayer>, IGameHub<TicTacToeGame, TicTacToePlayer>
 {
-	protected static readonly List<TicTacToeGame> Games = [];
+	protected static List<TicTacToeGame> Games { get; } = [];
 	protected static readonly Dictionary<string, TicTacToePlayer> Players = [];
 
-	public const string SENDER_CREATE_NEW_GAME = nameof(CreateNewGame);
-	public const string SENDER_CREATE_PLAYER = nameof(CreatePlayer);
-	public const string SENDER_PLAYER_JOIN = nameof(ClientJoinGame);
+	// Move these somewhere else (e.g. static class)
+	public const string SENDER_CREATE_NEW_GAME = nameof(ExposedCreateNewGame);
+	public const string SENDER_CREATE_PLAYER = nameof(ExposedCreatePlayer);
+	public const string SENDER_PLAYER_JOIN = nameof(ExposedPlayerJoinGame);
 	public const string SENDER_RECEIVE_OPPONENT_ID = nameof(ReceiveOpponentId);
 	public const string SENDER_MARK = nameof(MarkBoardAndSend);
+	public const string SENDER_OTHER_DISCONNECTED = nameof(ExposedOtherPlayerDisconnected);
 
 	private string OpponentId
 	{
@@ -49,54 +51,35 @@ public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IGameHub
 		}
 	}
 
-	public Task HandleOtherPlayerDisconnect()
-	{
-		var player = Players[Context.ConnectionId];
-		Game.RemoveOpponentOf(player);
-
-		return Task.CompletedTask;
-	}
-
 	public async Task MarkBoardAndSend(int i, int j) =>
-        await Clients.Client(OpponentId).SendAsync(LearningBlazor.Components.Applets.TicTacToe.RECEIVERS_MARK, i, j);
+        await Clients.Client(OpponentId).SendAsync(Components.Applets.TicTacToe.RECEIVERS_MARK, i, j);
 
 	public void ReceiveOpponentId(string opponentId) => 
 		OpponentId = opponentId;
 
-	public Task CreatePlayer(string username)
+	public async Task ExposedPlayerJoinGame(string gameNameId)
 	{
-		Players[Context.ConnectionId] = new TicTacToePlayer(Context.ConnectionId, username);
-		Player = Players[Context.ConnectionId];
-		return Task.CompletedTask;
-	}
-	public async Task ClientJoinGame(string gameNameId)
-	{
-		var game = Games.FirstOrDefault(g => g.NameId == gameNameId)
-			?? throw new Exception("Game not found!");
+		await PlayerJoinGame(Games, gameNameId);
 
-		Game = game;
-
-		await NotifyPlayersOfConnect();
-		game.Players.Add(Player);
-		OpponentId = game.Players[0].Id;
+		OpponentId = Game.Players[0].Id;
 
 		string symbol = Random.Shared.Next(0, 2) == 1 ? "X" : "O";
 		string opponentSymbol = symbol == "X" ? "O" : "X";
 
 		await Clients.Client(OpponentId).SendAsync("ReceiveOpponentId", Context.ConnectionId);
+
 		await Clients.Caller.SendAsync("ReceiveSymbol", symbol);
 		await Clients.Client(OpponentId).SendAsync("ReceiveSymbol", opponentSymbol);
 		await NotifyGameStart();
 	}
 
-	public async Task CreateNewGame()
-	{
-		var game = new TicTacToeGame(Player);
-		Games.Add(game);
-		Game = game;
+	public async Task ExposedCreateNewGame() =>
+		await CreateNewGame(Games);
 
-		// For anyone else in this hub, send the updated game list 
-		await Clients.Others.SendAsync(GameComponent.RECEIVERS_UPDATE_GAME_LIST, JsonConvert.SerializeObject(game));
-	} 
+	public async Task ExposedCreatePlayer(string username) =>
+		await CreatePlayer(Players, username);
+
+	public async Task ExposedOtherPlayerDisconnected(string connectionId) =>
+		await OtherPlayerDisconnected(Players, connectionId);
 	#endregion
 }

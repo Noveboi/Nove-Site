@@ -10,7 +10,7 @@
 @using LearningBlazor.Utilities.Base
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @inject ProtectedSessionStorage SessionStorage
-@inherits GameComponent
+@inherits GameComponent<TicTacToePlayer>
 
 <PageTitle>Tic-Tac-Toe</PageTitle>
 <div class="d-flex align-items-center flex-column justify-content-center">
@@ -41,7 +41,7 @@
 			<div class="col">
 				<p class="fw-bold display-6"
 					style="@(isPlayerTurn ? "color: #cf2244" : "color: #eeeeee")">
-						@username
+						@selfPlayer!.Name
 				</p>
 			</div>
 			<div class="col">
@@ -107,7 +107,7 @@ else
 			await BuildHubConnection("/tictactoehub");
 			AddReceiver(nameof(ReceiveResetGame), ReceiveResetGame);
 			AddReceiver<string>(nameof(ReceiveSymbol), ReceiveSymbol);
-			AddReceiver<int, int>(nameof(ReceiveMarkData), ReceiveMarkData);
+			AddReceiver<int, int>(RECEIVERS_MARK, ReceiveMarkData);
 			AddReceiver<string>(nameof(ReceiveOpponentId), ReceiveOpponentId);
 
 			board.Win += (s, e) => gameState = GameState.Win;
@@ -116,9 +116,9 @@ else
 		}
 	}
 
-	protected override async Task PlayerDisconnected(string playerName)
+	protected override async Task OtherDisconnected(string playerName)
 	{
-		await base.PlayerDisconnected(playerName);
+		await base.OtherDisconnected(playerName);
 
 		gameState = GameState.Waiting;
 		isPlayerTurn = false;
@@ -132,16 +132,18 @@ else
 		await SendToHub(arg1: id);
 	}
 
-	protected override async Task PlayerConnected(string json)
+	public override async Task OtherConnected(string json)
 	{
-		await base.PlayerConnected(json);
+		await base.OtherConnected(json);
 		isPlayerTurn = true;
 		opponentName = gamePlayers[1].Name;
+
+		await InvokeAsync(StateHasChanged);
 	}
 
-	protected override async Task ClientConnected(string json)
+	protected override async Task SelfConnected(string json)
 	{
-		await base.ClientConnected(json);
+		await base.SelfConnected(json);
 		opponentName = gamePlayers[0].Name;
 	}
 
@@ -175,8 +177,12 @@ else
 		await InvokeAsync(StateHasChanged);
 	} 
 
-	private async Task ReceiveSymbol(string s) =>
+	private Task ReceiveSymbol(string s) 
+	{
+		Logger.LogInformation("Player {Player} received symbol \"{Symbol}\"", selfPlayer!.Name, s);
 		board.Symbol = s;
+		return Task.CompletedTask;
+	}
 
 	private async Task ReceiveMarkData(int i, int j)
 	{

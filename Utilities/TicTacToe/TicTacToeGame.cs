@@ -18,11 +18,6 @@ public class TicTacToeGame : GameModel
     [JsonIgnore]
     public int PlayAgainRequests { get; private set; } = 0;
 
-    public void RemoveOpponentOf(TicTacToePlayer player)
-    {
-        var opponent = Players[0] == player ? Players[1] : Players[0];
-        Players.Remove(opponent);
-    }
 	public bool RequestPlayAgain()
     {
         PlayAgainRequests++;
