@@ -64,7 +64,7 @@ else if (requestedPlayAgain)
 else if (gameState == GameState.InLobby)
 {
 	<GameLobby Games="lobbyGames" GameJoinClick="OnGameJoinClick"/>
-	<button class="btn btn-primary" @onclick="CreateNewGame">Create a new game</button>
+	<button class="btn bg-primary text-light" @onclick="CreateNewGame">Create a new game</button>
 }
 else if (gameState == GameState.Waiting)
 {
@@ -84,8 +84,8 @@ else
 	{
 		<p class="text-light display-4">It's a tie!</p>
 	}
-	<button class="btn btn-primary" @onclick="SendPlayAgainRequest"> Play Again </button>
-	<button class="btn btn-primary" @onclick="HandleExit"> Exit Game </button>
+		<button class="btn bd-orange-500" @onclick="SendPlayAgainRequest"> Play Again </button>
+		<button class="btn bd-orange-500" @onclick="HandleExit"> Exit Game </button>
 }
 </div>
 

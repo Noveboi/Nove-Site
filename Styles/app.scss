@@ -1,0 +1,20 @@
+﻿$primary: #dc3545;
+$custom-colors: ( "disabled": #9a9a9a );
+
+@import "../wwwroot/bootstrap/scss/bootstrap.scss";
+// 8. Add additional custom code here
+$theme-colors: map-merge($theme-colors, $custom-colors);
+
+html, body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.title-header {
+    font-size: $h1-font-size;
+    font-weight: bold;
+    background-color: $red-600;
+    text-align: center;
+    color: $light;
+    padding: ($spacer * 2);
+    border-radius: $border-radius-lg;
+}
