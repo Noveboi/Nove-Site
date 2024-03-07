@@ -1,0 +1,7 @@
+﻿
+$primary: #dc3545;
+$custom-colors: ( "disabled": #9a9a9a );
+
+@import "../wwwroot/bootstrap/scss/bootstrap.scss";
+// 8. Add additional custom code here
+$theme-colors: map-merge($theme-colors, $custom-colors);
