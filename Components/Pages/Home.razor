@@ -5,12 +5,16 @@
 
 <PageTitle>Home</PageTitle>
 
-<div class="d-flex flex-column justify-content-evenly align-items-center flex-wrap align-content-center">
+<div class="d-flex flex-column justify-content-center align-items-center flex-wrap align-content-center h-50">
 
 	@if (submittedUsername == false)
 	{
-		<p class="h3 text-light">Welcome! Before you start, please enter a username:</p>
-		<form @onsubmit="UsernameEntered">
+		<p class="h1 fw-bold bg-primary text-light bg-opacity-75 rounded-3 p-4">Welcome to my personal website!</p>
+		<p class="h6 fw-light text-light w-75 text-center">
+			This is a temporary 'login' page as I have not yet implemented a database.
+			Please enter your username below!
+			</p>
+		<form @onsubmit="UsernameEntered" class="mt-4">
 			<input type="text" @bind="username" class="form-text"/>
 		</form>
 	}
