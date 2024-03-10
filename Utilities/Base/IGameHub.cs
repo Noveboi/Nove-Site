@@ -28,6 +28,6 @@
 		/// method of the same name from <see cref="IGameHubBase{TGame, TPlayer}"/>!
 		/// Feel free to add any extra processing steps into this method
 		/// </summary>
-		Task ExposedPlayerJoinGame(string gameNameId);
+		Task ExposedClientJoinGame(string gameNameId);
 	}
 }

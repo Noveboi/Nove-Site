@@ -14,7 +14,7 @@ namespace LearningBlazor.Utilities.Base;
 /// Base class for Razor Components that are applets for games. 
 /// <para>
 ///		This base class is concerned with providing such Components with basic methods for communicating 
-///		with <see cref="GameHubBase{TGame, TPlayer}"/> instances as well as providing some basic variables such as <see cref="GameState"/>
+///		with <see cref="GameHubBase{TGame, TPlayer}"/> instances as well as providing some basic variables such as <see cref="Base.GameStates"/>
 /// </para>
 /// </summary>
 public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where TPlayer : PlayerModel
@@ -22,17 +22,17 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	[Inject]
 	private NavigationManager NavManager { get; set; } = default!;
 	[Inject]
-	private ProtectedSessionStorage SessionStorage { get; set; } = default!;
-	[Inject]
 	private IJSRuntime JS { get; set; } = default!;
+	[Inject]
+	private IServiceProvider ServiceProvider { get; set; } = default!;
+
+	private HubConnection? hubConnection;
 
 	[Inject]
 	protected ILogger<GameComponentBase<TPlayer>> Logger { get; set; } = default!;
 	protected GameHubProtocol Protocol => GameHubProtocol.Singleton;
 
-	private HubConnection? hubConnection;
-
-	protected GameState gameState = GameState.InLobby;
+	protected GameStates GameState = GameStates.Waiting;
 	protected List<GameModel> lobbyGames = [];
 	protected List<PlayerModel> gamePlayers = [];
 	protected TPlayer? selfPlayer;
@@ -54,37 +54,19 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		NavManager.NavigateTo("/");
 	}
 
-	protected async Task BuildHubConnection(string hubRelativeUri)
+	protected async Task SetUpHubConnection(string hubUriName)
 	{
-		hubConnection = new HubConnectionBuilder()
-				.WithUrl(NavManager.ToAbsoluteUri(hubRelativeUri))
-				.WithAutomaticReconnect()
-				.Build();
+		hubConnection = ServiceProvider.GetKeyedService<HubConnection>(hubUriName)
+			?? throw new Exception("Couldn't find hubConnection instance");
 
 		// Set up receivers
 		hubConnection.On(Protocol[Receivers.OnBeginGame], OnBeginGame);
-		hubConnection.On<string>(Protocol[Receivers.GetGameList], GetGameList);
 		hubConnection.On<string>(Protocol[Receivers.OtherConnected], OtherConnected);
-		hubConnection.On<string>(Protocol[Receivers.SelfConnected], SelfConnected);
 		hubConnection.On<string>(Protocol[Receivers.OtherDisconnected], OtherDisconnected);
-		hubConnection.On<string>(Protocol[Receivers.GetPlayerModel], GetPlayerModel);
-		hubConnection.On<string>(Protocol[Receivers.UpdateGameList], UpdateGameList);
+		hubConnection.On<string, string>(Protocol[Receivers.SelfConnected], SelfConnected);
 
-		await hubConnection.StartAsync();
-
-		// Get username from Session Storage
-		var result = await SessionStorage.GetAsync<string>("username");
-		string username = result.Success
-			? result.Value ?? throw new Exception("Retrieved NULL username from Session Storage!")
-			: "SES_STORAGE_FAILURE";
-
-#if DEBUG
-		Thread.CurrentThread.Name = $"{username}'s thread";
-#endif
-
-		await hubConnection.SendAsync(Protocol[Senders.CreatePlayer], username);
-
-		Logger.LogInformation("Succesfully built hub connection for player: \"{username}\"", username);
+		// Let the hub know!
+		await hubConnection.SendAsync(Protocol[Senders.ReadyToConnect]);
 	}
 
 	#region Receiver & Sender Wrappers
@@ -154,11 +136,11 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	#endregion
 
 	/// <summary>
-	/// Sets the <see cref="GameState"/> to <see cref="GameState.Playing"/> and forces UI re-render
+	/// Sets the <see cref="Base.GameStates"/> to <see cref="GameStates.Playing"/> and forces UI re-render
 	/// </summary>
 	private async Task OnBeginGame()
 	{
-		gameState = GameState.Playing;
+		GameState = GameStates.Playing;
 		await InvokeAsync(StateHasChanged);
 	}
 
@@ -168,22 +150,26 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	/// </summary>
 	public virtual async Task OtherConnected(string json)
 	{
-		if (hubConnection is not null)
-			await hubConnection.SendAsync(Protocol[Receivers.OtherConnected]);
-
 		var player = JsonConvert.DeserializeObject<PlayerModel>(json)
 			?? throw new Exception("Deserialized into NULL obhect when trying to get Player!");
 
 		gamePlayers.Add(player);
+
+		if (hubConnection is not null)
+			await hubConnection.InvokeAsync(Protocol[Senders.OtherPlayerConnected]);
 	} 
 
-	protected virtual async Task SelfConnected(string json)
+	protected virtual async Task SelfConnected(string playerJson, string gamePlayersJson)
 	{
-		var playerList = JsonConvert.DeserializeObject<List<PlayerModel>>(json)
-			?? throw new Exception("Deserialized into NULL object when trying to get Player List!");
+		var player = JsonConvert.DeserializeObject<TPlayer>(playerJson)
+			?? throw new Exception("Deserialized ino NULL object when trying to get player object!");
+		if (gamePlayersJson != string.Empty)
+			gamePlayers = JsonConvert.DeserializeObject<List<PlayerModel>>(gamePlayersJson)
+				?? throw new Exception("Deserialized into NULL object when trying to get player list!");
 
-		gamePlayers = playerList;
-		gamePlayers.Add(selfPlayer!);
+		selfPlayer = player;
+		gamePlayers.Add(selfPlayer);
+
 		await InvokeAsync(StateHasChanged);
 	}
 
@@ -198,50 +184,6 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		gamePlayers.Remove(playerToRemove);
 	}
 
-	private async Task GetGameList(string json)
-	{
-		var gameList = JsonConvert.DeserializeObject<List<GameModel>>(json)
-			?? throw new Exception("Deserialized into NULL object when trying to get Game List!");
-
-		lobbyGames = gameList;
-		await InvokeAsync(StateHasChanged);
-	}
-
-	private Task GetPlayerModel(string json)
-	{
-		var player = JsonConvert.DeserializeObject<TPlayer>(json)
-			?? throw new Exception("Deserialized into NULL object when trying to get Player!");
-
-		selfPlayer = player;
-		return Task.CompletedTask;
-	}
-
-	private async Task UpdateGameList(string json)
-	{
-		var game = JsonConvert.DeserializeObject<GameModel>(json)
-			?? throw new Exception("Deserialized into NULL object when trying to get Game!");
-
-		lobbyGames.Add(game);
-		await InvokeAsync(StateHasChanged);
-	}
-
-	protected async Task CreateNewGame()
-	{
-		if (hubConnection is not null)
-			await hubConnection.SendAsync(Protocol[Senders.CreateNewGame]);
-
-		gameState = GameState.Waiting;
-		gamePlayers.Add(selfPlayer!);
-
-		await InvokeAsync(StateHasChanged);
-	}
-
-	protected async Task OnGameJoinClick(GameModel game)
-	{
-		if (hubConnection is not null)
-			await hubConnection.SendAsync(Protocol[Senders.PlayerJoinGame], game.NameId);
-	}
-
 	[JSInvokable]
 	public async Task OnBrowserTabClose()
 	{
@@ -254,7 +196,6 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		if (hubConnection is not null)
 		{
 			await JS.InvokeVoidAsync("unregisterListeners");
-			await hubConnection.DisposeAsync();
 			GC.SuppressFinalize(this);
 		}
 	}

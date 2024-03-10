@@ -21,7 +21,7 @@ public class GameHubProtocol
 
 		// Override names for exposed methods in GameHub subclasses
 		PrependTextToMethod(Senders.CreateNewGame);
-		PrependTextToMethod(Senders.PlayerJoinGame);
+		PrependTextToMethod(Senders.ClientJoinGame);
 		PrependTextToMethod(Senders.CreatePlayer);
 		PrependTextToMethod(Senders.OtherPlayerDisconnected);
 	}
@@ -57,8 +57,7 @@ public enum Receivers
 	OtherConnected,
 	OtherDisconnected,
 	GetGameList,
-	GetPlayerModel,
-	UpdateGameList
+	UpdateGameList,
 }
 
 /// <summary>
@@ -72,7 +71,10 @@ public enum Senders
 {
 	CreateNewGame,
 	CreatePlayer,
-	PlayerJoinGame,
+	ClientJoinGame,
 	OtherPlayerDisconnected,
-	OnBrowserClose
+	OnBrowserClose,
+	SendGameListToClient,
+	ReadyToConnect,
+	OtherPlayerConnected
 }

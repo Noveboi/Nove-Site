@@ -8,10 +8,6 @@ public class TicTacToeHub : GameHubBase<TicTacToeGame, TicTacToePlayer>, IGameHu
 	private static readonly List<TicTacToeGame> _games = [];
 	private static readonly Dictionary<string, TicTacToePlayer> _players = [];
 
-	// Move these somewhere else (e.g. static class)
-	public const string SENDER_RECEIVE_OPPONENT_ID = nameof(ReceiveOpponentId);
-	public const string SENDER_MARK = nameof(MarkBoardAndSend);
-
 	private string OpponentId
 	{
 		get
@@ -47,26 +43,33 @@ public class TicTacToeHub : GameHubBase<TicTacToeGame, TicTacToePlayer>, IGameHu
 	}
 
 	public async Task MarkBoardAndSend(int i, int j) =>
-        await Clients.Client(OpponentId).SendAsync(Components.Applets.TicTacToe.RECEIVERS_MARK, i, j);
+        await Clients.Client(OpponentId).SendAsync("ReceiveMarkData", i, j);
 
-	public void ReceiveOpponentId(string opponentId) => 
-		OpponentId = opponentId;
-
-	public async Task ExposedPlayerJoinGame(string gameNameId)
+	public override async Task ReadyToConnect()
 	{
-		await PlayerJoinGame(_games, gameNameId);
+		await base.ReadyToConnect();
+		
+		if (Game.Players.Count == 2)
+		{
+			OpponentId = Game.Players[0].Id;
 
-		OpponentId = Game.Players[0].Id;
+			string symbol = Random.Shared.Next(0, 2) == 1 ? "X" : "O";
+			string opponentSymbol = symbol == "X" ? "O" : "X";
 
-		string symbol = Random.Shared.Next(0, 2) == 1 ? "X" : "O";
-		string opponentSymbol = symbol == "X" ? "O" : "X";
-
-		await Clients.Client(OpponentId).SendAsync("ReceiveOpponentId", Context.ConnectionId);
-
-		await Clients.Caller.SendAsync("ReceiveSymbol", symbol);
-		await Clients.Client(OpponentId).SendAsync("ReceiveSymbol", opponentSymbol);
-		await NotifyGameStart();
+			await Clients.Caller.SendAsync("ReceiveSymbol", symbol);
+			await Clients.Client(OpponentId).SendAsync("ReceiveSymbol", opponentSymbol);
+			await NotifyGameStart();
+		}
 	}
+
+	public override Task OtherPlayerConnected()
+	{
+		OpponentId = Game.Players[1].Id;
+		return base.OtherPlayerConnected();
+	}
+
+	public async Task ExposedClientJoinGame(string gameNameId) =>
+		await ClientJoinGame(_games, gameNameId);
 
 	public async Task ExposedCreateNewGame() =>
 		await CreateNewGame(_games);

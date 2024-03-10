@@ -111,54 +111,63 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 	public async Task SendGameListToClient(List<TGame> games) 
 	{
 		string json = JsonConvert.SerializeObject(games);
-		await Clients.Caller.SendAsync(method: "GetGameList", arg1: json);
+		await Clients.Caller.SendAsync(Protocol[Receivers.GetGameList], json);
 	}
 
-	public async Task CreatePlayer(Dictionary<string, TPlayer> playerDict, string username)
+	public Task CreatePlayer(Dictionary<string, TPlayer> playerDict, string username)
 	{
 		var player = Activator.CreateInstance(typeof(TPlayer), Context.ConnectionId, username) as TPlayer
 			?? throw new Exception($"Couldn't instantiate player of type {nameof(TPlayer)}");
 		playerDict[Context.ConnectionId] = player;
 		Player = player;
 
-		var playerJson = JsonConvert.SerializeObject(Player);
-
-		await Clients.Caller.SendAsync(Protocol[Receivers.GetPlayerModel], playerJson);
+		return Task.CompletedTask;
 	}
 
-	public async Task PlayerJoinGame(List<TGame> games, string gameNameId)
+	public virtual async Task ReadyToConnect()
+	{
+		await NotifyOfClientConnection();
+		Game.Players.Add(Player);
+
+		var gameJson = JsonConvert.SerializeObject(Game);
+
+		if (Game.Players.Count == 1)
+			await Clients.Others.SendAsync(Protocol[Receivers.UpdateGameList], gameJson);
+	}
+
+	public Task ClientJoinGame(List<TGame> games, string gameNameId)
 	{
 		var game = games.FirstOrDefault(g => g.NameId == gameNameId)
 			?? throw new Exception("Game not found!");
 
 		Game = game;
-		await NotifyOthersOfNewConnection();
-		game.Players.Add(Player);
+		return Task.CompletedTask;
 	}
 
 	public async Task NotifyGameStart() =>
 		await NotifyGamePlayers(Protocol[Receivers.OnBeginGame]);
 
-    public async Task NotifyOthersOfNewConnection()
+    public async Task NotifyOfClientConnection()
 	{
 		string playerJson = JsonConvert.SerializeObject(Player);
-		string gamePlayersJson = JsonConvert.SerializeObject(Game.Players);
+		string gamePlayersJson = Game.Players.Count == 0 ? string.Empty : JsonConvert.SerializeObject(Game.Players);
 
-		await Clients.Caller.SendAsync(Protocol[Receivers.SelfConnected], gamePlayersJson);
+		await Clients.Caller.SendAsync(Protocol[Receivers.SelfConnected], playerJson, gamePlayersJson);
 		await NotifyGamePlayers(Protocol[Receivers.OtherConnected], playerJson);
 	}
 
+	public virtual Task OtherPlayerConnected() 
+		=> Task.CompletedTask;
+
 	public async Task CreateNewGame(List<TGame> games)
 	{
-		var game = Activator.CreateInstance(typeof(TGame), Player) as TGame
+		var game = Activator.CreateInstance(typeof(TGame)) as TGame
 			?? throw new Exception($"Couldn't instantiate {nameof(TGame)} object");
 		games.Add(game);
 		Game = game;
 
-		string gameJson = JsonConvert.SerializeObject(game);
-
-		// For anyone else in this hub, send the updated game list 
-		await Clients.Others.SendAsync(Protocol[Receivers.UpdateGameList], gameJson);
+		string gameJson = JsonConvert.SerializeObject(Game);
+		string playerJson = JsonConvert.SerializeObject(Player);
 	}
 
 	public Task OtherPlayerDisconnected(Dictionary<string, TPlayer> playerDict, string connectionId)
