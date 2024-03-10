@@ -15,10 +15,10 @@
 		<div class="opaque-box">
 			<p class="h5 fw-lighter w-75 text-center">
 				Please enter your username below!
-				</p>
-			<form @onsubmit="UsernameEntered" class="mt-4">
+			</p>
+			<form @onsubmit="UsernameEntered" class="mt-4 d-flex flex-column align-items-center">
 				<input type="text" @bind="username" class="text-box"/>
-				<button type="submit" class="btn btn-primary">Confirm</button>
+				<button type="submit" class="btn btn-primary mt-2">Confirm</button>
 			</form>
 		</div>
 	}

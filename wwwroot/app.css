@@ -11954,7 +11954,23 @@ textarea.form-control-lg {
 .text-box {
   color: #e9ecef;
   font-size: 1rem;
-  padding: 0.2rem;
+  padding: 0.2rem 0.4rem;
+  border-width: 2px;
+  border-style: solid;
+  border-color: #adb5bd;
+  border-radius: 0.25rem;
+  transition: border-color ease-out 0.2s;
+  transition: border-radius linear 0.2s;
+}
+
+.text-box:hover {
+  border-color: #ea868f;
+  border-radius: 2rem;
+}
+
+.text-box:focus {
+  border-color: #ea868f;
+  border-radius: 2rem;
 }
 
 .main-page-card {
@@ -11966,11 +11982,12 @@ textarea.form-control-lg {
   margin-right: 1rem;
   margin-bottom: 1rem;
   color: #f8f9fa;
-  background-color: rgba(152, 76, 12, 0.5);
+  background-color: rgba(253, 126, 20, 0.5);
   border-radius: 0.5rem;
   padding: 1.5rem;
   user-select: none;
   cursor: pointer;
+  transition: background-color ease-out 0.3s;
 }
 .main-page-card h1, .main-page-card .h1 {
   font-weight: bold;
@@ -11978,4 +11995,8 @@ textarea.form-control-lg {
 }
 .main-page-card p {
   font-weight: lighter;
+}
+
+.main-page-card:hover {
+  background-color: rgba(176, 42, 55, 0.75);
 }

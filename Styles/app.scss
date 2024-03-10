@@ -78,19 +78,39 @@ $theme-colors: map-merge($theme-colors, $custom-colors);
 .text-box {
     color: $gray-200;
     font-size: $font-size-base;
-    padding: ($spacer * 0.2);
+    padding: ($spacer * 0.2) ($spacer * 0.4);
+    border-width: 2px;
+    border-style: solid;
+    border-color: $gray-500;
+    border-radius: $border-radius-sm;
+
+    transition: border-color ease-out 0.2s;
+    transition: border-radius linear 0.2s;
 }
+
+.text-box:hover {
+    border-color: $red-300;
+    border-radius: $border-radius-xxl;
+}
+
+.text-box:focus {
+    border-color: $red-300;
+    border-radius: $border-radius-xxl;
+}
+
 
 .main-page-card {
     @include set-flex-column();
     @include add-margin(0, $spacer, $spacer, $spacer);
 
     color: $gray-100;
-    background-color: rgba($orange-700, 0.5);
+    background-color: rgba($orange-500, 0.5);
     border-radius: $border-radius-lg;
     padding: ($spacer * 1.5);
     user-select: none;
     cursor: pointer;
+
+    transition: background-color ease-out 0.3s;
 
     h1 {
         font-weight: bold;
@@ -100,5 +120,9 @@ $theme-colors: map-merge($theme-colors, $custom-colors);
     p {
         font-weight: lighter;
     }
+}
+
+.main-page-card:hover {
+    background-color: rgba($red-600, 0.75);
 }
 
