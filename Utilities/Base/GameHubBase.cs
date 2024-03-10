@@ -102,7 +102,7 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 	{
 		Game.Players.Remove(Player);
 
-		await NotifyGamePlayers(GameComponent<TPlayer>.RECEIVERS_OTHER_DISCONNECTED, Player.Id);
+		await NotifyGamePlayers(GameComponentBase<TPlayer>.RECEIVERS_OTHER_DISCONNECTED, Player.Id);
 		await base.OnDisconnectedAsync(exception);
 	}
 
@@ -124,7 +124,7 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 
 		var playerJson = JsonConvert.SerializeObject(Player);
 
-		await Clients.Caller.SendAsync(GameComponent<TPlayer>.RECEIVERS_GET_PLAYER_MODEL, playerJson);
+		await Clients.Caller.SendAsync(GameComponentBase<TPlayer>.RECEIVERS_GET_PLAYER_MODEL, playerJson);
 	}
 
 	public async Task PlayerJoinGame(List<TGame> games, string gameNameId)
@@ -138,15 +138,15 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 	}
 
 	public async Task NotifyGameStart() =>
-		await NotifyGamePlayers(GameComponent<TPlayer>.RECEIVERS_BEGIN_GAME);
+		await NotifyGamePlayers(GameComponentBase<TPlayer>.RECEIVERS_BEGIN_GAME);
 
     public async Task NotifyOthersOfNewConnection()
 	{
 		string playerJson = JsonConvert.SerializeObject(Player);
 		string gamePlayersJson = JsonConvert.SerializeObject(Game.Players);
 
-		await Clients.Caller.SendAsync(GameComponent<TPlayer>.RECEIVERS_SELF_CONNECTED, gamePlayersJson);
-		await NotifyGamePlayers(GameComponent<TPlayer>.RECEIVERS_OTHER_CONNECTED, playerJson);
+		await Clients.Caller.SendAsync(GameComponentBase<TPlayer>.RECEIVERS_SELF_CONNECTED, gamePlayersJson);
+		await NotifyGamePlayers(GameComponentBase<TPlayer>.RECEIVERS_OTHER_CONNECTED, playerJson);
 	}
 
 	public async Task CreateNewGame(List<TGame> games)
@@ -159,7 +159,7 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 		string gameJson = JsonConvert.SerializeObject(game);
 
 		// For anyone else in this hub, send the updated game list 
-		await Clients.Others.SendAsync(GameComponent<TPlayer>.RECEIVERS_UPDATE_GAME_LIST, gameJson);
+		await Clients.Others.SendAsync(GameComponentBase<TPlayer>.RECEIVERS_UPDATE_GAME_LIST, gameJson);
 	}
 
 	public Task OtherPlayerDisconnected(Dictionary<string, TPlayer> playerDict, string connectionId)

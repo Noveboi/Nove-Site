@@ -1,7 +1,8 @@
 ﻿@page "/"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
-@inject ProtectedSessionStorage sessionStorage
+@inject ProtectedSessionStorage SessionStorage
+@inject NavigationManager NavManager
 
 <PageTitle>Home</PageTitle>
 
@@ -10,50 +11,38 @@
 
 	@if (submittedUsername == false)
 	{
-		<h1 class="title-header">Welcome!</h1>
-		<div class="d-flex flex-column m-auto align-items-center">
-			<p class="h6 fw-light text-light w-75 text-center">
-				This is a temporary 'login' page as I have not yet implemented a database.
+		<h1 class="title-header title-header-opaque">Welcome!</h1>
+		<div class="opaque-box">
+			<p class="h5 fw-lighter w-75 text-center">
 				Please enter your username below!
 				</p>
 			<form @onsubmit="UsernameEntered" class="mt-4">
-				<input type="text" @bind="username" class="form-text"/>
+				<input type="text" @bind="username" class="text-box"/>
+				<button type="submit" class="btn btn-primary">Confirm</button>
 			</form>
 		</div>
 	}
-	else {
-			<h1 class="title-header">Novè's Applet Collection</h1>
-
-			@if (Applets == null)
+	else 
+	{
+		<h1 class="title-header title-header-opaque">All ready! Where to next?</h1>
+		<div class="d-flex flex-wrap align-items-center justify-content-center w-75 h-100">
+			@foreach (var pageInfo in ComponentFinder.GetMainPages())
 			{
-				<p class="fw-bold h5 text-light">Loading applets, please wait...</p>
-			} 
-			else
-			{
-				@foreach (var applet in Applets)
-				{
-					<NavBox Applet="applet"></NavBox>
-				}
+				<MainPageCard PageInfo="pageInfo" OnPageClicked="(href) => NavManager.NavigateTo(href)"/>
 			}
+		</div>
 	}
 </div>
 
 @code {
-	IEnumerable<AppletModel> Applets;
 	bool submittedUsername = false;
-
 	string username = string.Empty;
 
-	protected override Task OnInitializedAsync()
-	{
-		Applets = AppletFinder.GetApplets();
-		return Task.CompletedTask;
-	}
+	IEnumerable<string>? mainPages;
 
-	private async Task UsernameEntered()
+	async Task UsernameEntered()
 	{
-		await sessionStorage.SetAsync("username", username);
+		await SessionStorage.SetAsync("username", username);
 		submittedUsername = true;
-		await InvokeAsync(StateHasChanged);
 	}
 }

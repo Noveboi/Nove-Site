@@ -7,17 +7,16 @@ using LearningBlazor.Hubs;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using LearningBlazor.Utilities.TicTacToe;
 using Microsoft.JSInterop;
-using Microsoft.AspNetCore.Components.Server.Circuits;
 
 namespace LearningBlazor.Utilities.Base;
 /// <summary>
 /// Base class for Razor Components that are applets for games. 
 /// <para>
-///		<see cref="GameComponent"/> is concerned with providing such Components with basic methods for communicating 
-///		with <see cref="GameHub{TGame}"/> instances as well as providing some basic variables such as <see cref="GameState"/>
+///		This base class is concerned with providing such Components with basic methods for communicating 
+///		with <see cref="GameHubBase{TGame, TPlayer}"/> instances as well as providing some basic variables such as <see cref="GameState"/>
 /// </para>
 /// </summary>
-public class GameComponent<TPlayer> : ComponentBase, IAsyncDisposable where TPlayer : PlayerModel
+public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where TPlayer : PlayerModel
 {
 	[Inject]
 	private NavigationManager NavManager { get; set; } = default!;
@@ -27,7 +26,7 @@ public class GameComponent<TPlayer> : ComponentBase, IAsyncDisposable where TPla
 	private IJSRuntime JS { get; set; } = default!;
 
 	[Inject]
-	protected ILogger<GameComponent<TPlayer>> Logger { get; set; } = default!;
+	protected ILogger<GameComponentBase<TPlayer>> Logger { get; set; } = default!;
 
 	private HubConnection? hubConnection;
 

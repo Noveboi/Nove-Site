@@ -1,0 +1,17 @@
+﻿<div class="main-page-card" @onclick="NavigateToPage">
+	<h1>@PageInfo?.Title</h1>
+	<p>@PageInfo?.Description</p>
+</div>
+@code {
+	[Parameter]
+	public PageModel? PageInfo { get; set; }
+
+	[Parameter]
+	public EventCallback<string> OnPageClicked { get; set; }
+
+	async Task NavigateToPage()
+	{
+		if (PageInfo != null)
+			await OnPageClicked.InvokeAsync(PageInfo.Href);
+	}
+}

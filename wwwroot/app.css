@@ -11894,10 +11894,6 @@ textarea.form-control-lg {
     display: none !important;
   }
 }
-html, body {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-}
-
 .bg-image-blurred {
   position: fixed;
   top: 0;
@@ -11928,4 +11924,58 @@ html, body {
   color: #f8f9fa;
   padding: 2rem;
   border-radius: 0.5rem;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.title-header-opaque {
+  background-color: rgba(176, 42, 55, 0.75);
+}
+
+/* 
+    Use these for containers that are on top of a background image (e.g Home page)
+*/
+.opaque-box {
+  margin-top: auto;
+  margin-left: 1rem;
+  margin-right: 1rem;
+  margin-bottom: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  background-color: rgba(10, 0, 0, 0.5);
+}
+
+/*
+    General use <input type="text"> style
+*/
+.text-box {
+  color: #e9ecef;
+  font-size: 1rem;
+  padding: 0.2rem;
+}
+
+.main-page-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 0;
+  margin-left: 1rem;
+  margin-right: 1rem;
+  margin-bottom: 1rem;
+  color: #f8f9fa;
+  background-color: rgba(152, 76, 12, 0.5);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  user-select: none;
+  cursor: pointer;
+}
+.main-page-card h1, .main-page-card .h1 {
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+.main-page-card p {
+  font-weight: lighter;
 }

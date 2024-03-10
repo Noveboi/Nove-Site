@@ -1,0 +1,29 @@
+﻿@page "/applets"
+@attribute [MainPage("Applets", "A collection of games and small apps!" ,"/applets")]
+@rendermode InteractiveServer
+
+<PageTitle>Applet Collection</PageTitle>
+
+<div class="d-flex flex-column w-50 m-auto align-items-center">
+	@if (applets == null)
+	{
+		<h1> Loading applets, please wait... </h1>
+	}
+	else
+	{
+		foreach (var applet in applets) 
+		{
+			<AppletCard Applet="applet" />
+		}
+	}
+</div>
+
+@code {
+	IEnumerable<PageModel>? applets;
+
+	protected override Task OnInitializedAsync()
+	{
+		applets = ComponentFinder.GetApplets();
+		return Task.CompletedTask;
+	}
+}

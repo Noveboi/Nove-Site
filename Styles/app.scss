@@ -2,12 +2,21 @@
 $custom-colors: ( "disabled": #9a9a9a );
 
 @import "../wwwroot/bootstrap/scss/bootstrap.scss";
-// 8. Add additional custom code here
+
 $theme-colors: map-merge($theme-colors, $custom-colors);
 
 
-html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+@mixin add-margin($mt, $ms, $mb, $me) {
+    margin-top: $mt;
+    margin-left: $ms;
+    margin-right: $me;
+    margin-bottom: $mb;
+}
+
+@mixin set-flex-column() {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .bg-image-blurred {
@@ -31,7 +40,6 @@ html, body {
     z-index: -1;
 }
 
-
 /* 
     Used for h1 titles typically at the top of the page 
     Use this when you want to place emphasis on some text
@@ -44,4 +52,53 @@ html, body {
     color: $light;
     padding: ($spacer * 2);
     border-radius: $border-radius-lg;
+    user-select: none;
+    -webkit-user-select: none;
 }
+
+.title-header-opaque {
+    background-color: rgba($red-600, 0.75);
+}
+
+/* 
+    Use these for containers that are on top of a background image (e.g Home page)
+*/
+.opaque-box {
+    @include add-margin(auto, $spacer, auto, $spacer);
+    @include set-flex-column();
+
+    padding: ($spacer * 2);
+    border-radius: $border-radius-lg;
+    background-color: rgba(10,0,0,0.5);
+}
+
+/*
+    General use <input type="text"> style
+*/
+.text-box {
+    color: $gray-200;
+    font-size: $font-size-base;
+    padding: ($spacer * 0.2);
+}
+
+.main-page-card {
+    @include set-flex-column();
+    @include add-margin(0, $spacer, $spacer, $spacer);
+
+    color: $gray-100;
+    background-color: rgba($orange-700, 0.5);
+    border-radius: $border-radius-lg;
+    padding: ($spacer * 1.5);
+    user-select: none;
+    cursor: pointer;
+
+    h1 {
+        font-weight: bold;
+        margin-bottom: $spacer;
+    }
+
+    p {
+        font-weight: lighter;
+    }
+}
+

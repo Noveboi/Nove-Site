@@ -7,10 +7,9 @@
 )]
 @using LearningBlazor.Hubs
 @using LearningBlazor.Utilities.TicTacToe
-@using LearningBlazor.Utilities.Base
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @inject ProtectedSessionStorage SessionStorage
-@inherits GameComponent<TicTacToePlayer>
+@inherits GameComponentBase<TicTacToePlayer>
 
 <PageTitle>Tic-Tac-Toe</PageTitle>
 <div class="d-flex align-items-center flex-column justify-content-center">
