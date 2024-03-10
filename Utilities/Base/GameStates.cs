@@ -1,8 +1,7 @@
 ﻿namespace LearningBlazor.Utilities.Base
 {
-    public enum GameState
+    public enum GameStates
     {
-        InLobby,
         Waiting,
         Playing,
         Win,

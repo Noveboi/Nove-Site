@@ -1,19 +1,18 @@
-﻿@page "/applets/tictactoe"
+﻿@page "/applets/tictactoe" 
 @rendermode InteractiveServer
-@attribute [Applet(
+@attribute [Game(
 	"Tic-Tac-Toe",
 	"Simple Tic-Tac-Toe game!",
-	"/applets/tictactoe"
+	typeof(TicTacToe)
 )]
-@using LearningBlazor.Hubs
 @using LearningBlazor.Utilities.TicTacToe
-@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
-@inject ProtectedSessionStorage SessionStorage
+@using Microsoft.AspNetCore.SignalR.Client
+
 @inherits GameComponentBase<TicTacToePlayer>
 
 <PageTitle>Tic-Tac-Toe</PageTitle>
 <div class="d-flex align-items-center flex-column justify-content-center">
-@if (board is not null && !requestedPlayAgain && gameState == GameState.Playing)
+@if (board is not null && !requestedPlayAgain && GameState == GameStates.Playing)
 {
 	<div class="container w-25 h-25 align-self-center">
 		@for (int i = 0; i < 3; i++)
@@ -60,26 +59,21 @@ else if (requestedPlayAgain)
 {
 	<h1 class="text-primary">Waiting for other player to confirm...</h1>
 }
-else if (gameState == GameState.InLobby)
-{
-	<GameLobby Games="lobbyGames" GameJoinClick="OnGameJoinClick"/>
-	<button class="btn bg-primary text-light" @onclick="CreateNewGame">Create a new game</button>
-}
-else if (gameState == GameState.Waiting)
+else if (GameState == GameStates.Waiting)
 {
 	<h2 class="text-light">Waiting for another player to join...</h2>		
 }
 else
 {
-	if (gameState == GameState.Win)
+	if (GameState == GameStates.Win)
 	{
 		<p class="text-light display-4">You Win!</p>
 	}
-		if (gameState == GameState.Loss)
+		if (GameState == GameStates.Loss)
 	{
 		<p class="text-light display-4">You Lose!</p>
 	}
-		if (gameState == GameState.Tie)
+		if (GameState == GameStates.Tie)
 	{
 		<p class="text-light display-4">It's a tie!</p>
 	}
@@ -95,23 +89,20 @@ else
 
 	string opponentName = string.Empty;
 
-	public const string RECEIVERS_MARK = nameof(ReceiveMarkData);
-
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
 		await base.OnAfterRenderAsync(firstRender);
 
 		if (firstRender)
 		{
-			await BuildHubConnection("/tictactoehub");
-			AddReceiver(nameof(ReceiveResetGame), ReceiveResetGame);
-			AddReceiver<string>(nameof(ReceiveSymbol), ReceiveSymbol);
-			AddReceiver<int, int>(RECEIVERS_MARK, ReceiveMarkData);
-			AddReceiver<string>(nameof(ReceiveOpponentId), ReceiveOpponentId);
+			await SetUpHubConnection("tictactoehub");
+			AddReceiver("ReceiveResetGame", ReceiveResetGame);
+			AddReceiver<string>("ReceiveSymbol", ReceiveSymbol);
+			AddReceiver<int, int>("ReceiveMarkData", ReceiveMarkData);
 
-			board.Win += (s, e) => gameState = GameState.Win;
-			board.Lose += (s, e) => gameState = GameState.Loss;
-			board.Tie += (s, e) => gameState = GameState.Tie;
+			board.Win += (s, e) => GameState = GameStates.Win;
+			board.Lose += (s, e) => GameState = GameStates.Loss;
+			board.Tie += (s, e) => GameState = GameStates.Tie;
 		}
 	}
 
@@ -119,17 +110,13 @@ else
 	{
 		await base.OtherDisconnected(playerName);
 
-		gameState = GameState.Waiting;
+		GameState = GameStates.Waiting;
 		isPlayerTurn = false;
 		board.Reset();
 		requestedPlayAgain = false;
 		await InvokeAsync(StateHasChanged);
 	}
 
-	protected async Task ReceiveOpponentId(string id)
-	{
-		await SendToHub(arg1: id);
-	}
 
 	public override async Task OtherConnected(string json)
 	{
@@ -140,10 +127,12 @@ else
 		await InvokeAsync(StateHasChanged);
 	}
 
-	protected override async Task SelfConnected(string json)
+	protected override async Task SelfConnected(string playerJson, string gamePlayersJson)
 	{
-		await base.SelfConnected(json);
-		opponentName = gamePlayers[0].Name;
+		await base.SelfConnected(playerJson, gamePlayersJson);
+
+		if (gamePlayers.Count == 2)
+			opponentName = gamePlayers[0].Name;
 	}
 
 	private async Task SendPlayAgainRequest()
@@ -160,14 +149,14 @@ else
 		isPlayerTurn = false;
 		board.Mark(i, j);
 
-		await SendToHub(i, j, TicTacToeHub.SENDER_MARK);
+		await SendToHub(i, j, "MarkBoardAndSend");
 	}
 
 	private async Task ReceiveResetGame()
 	{
 		requestedPlayAgain = false;
 
-		gameState = GameState.Playing;
+		GameState = GameStates.Playing;
 		board.Reset();
 		if (board.Symbol == "O")
 			isPlayerTurn = true;

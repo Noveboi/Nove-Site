@@ -6,7 +6,12 @@ namespace LearningBlazor.Utilities.Attributes;
 /// Assign this attribute to Razor Components that function as applets.
 /// </summary>
 [AttributeUsage(AttributeTargets.All, Inherited = false, AllowMultiple = false)]
-sealed class AppletAttribute(string title, string description, string href) : Attribute
+class AppletAttribute(string title, string description, string href) : Attribute
 {
-    public PageModel Applet => new(title, description, href);
+    private PageModel _applet = new PageModel(title, description, href);
+    public PageModel Applet
+    {
+        get => _applet;
+        protected set => _applet = value;
+    }
 }

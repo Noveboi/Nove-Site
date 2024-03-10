@@ -1,21 +1,12 @@
 ﻿using LearningBlazor.Utilities.Base;
 using LearningBlazor.Utilities.TicTacToe;
 using Microsoft.AspNetCore.SignalR;
-using Newtonsoft.Json;
 
 namespace LearningBlazor.Hubs;
 public class TicTacToeHub : GameHubBase<TicTacToeGame, TicTacToePlayer>, IGameHub<TicTacToeGame, TicTacToePlayer>
 {
-	protected static List<TicTacToeGame> Games { get; } = [];
-	protected static readonly Dictionary<string, TicTacToePlayer> Players = [];
-
-	// Move these somewhere else (e.g. static class)
-	public const string SENDER_CREATE_NEW_GAME = nameof(ExposedCreateNewGame);
-	public const string SENDER_CREATE_PLAYER = nameof(ExposedCreatePlayer);
-	public const string SENDER_PLAYER_JOIN = nameof(ExposedPlayerJoinGame);
-	public const string SENDER_RECEIVE_OPPONENT_ID = nameof(ReceiveOpponentId);
-	public const string SENDER_MARK = nameof(MarkBoardAndSend);
-	public const string SENDER_OTHER_DISCONNECTED = nameof(ExposedOtherPlayerDisconnected);
+	private static readonly List<TicTacToeGame> _games = [];
+	private static readonly Dictionary<string, TicTacToePlayer> _players = [];
 
 	private string OpponentId
 	{
@@ -31,13 +22,13 @@ public class TicTacToeHub : GameHubBase<TicTacToeGame, TicTacToePlayer>, IGameHu
 	{
 		IsUserPlaying = false;
 
-		await SendGameListToClient(Games);
+		await SendGameListToClient(_games);
 		await base.OnConnectedAsync();
 	}
 
 	public override async Task OnDisconnectedAsync(Exception? exception)
 	{
-		Players.Remove(Context.ConnectionId);
+		_players.Remove(Context.ConnectionId);
 		await base.OnDisconnectedAsync(exception);
 	}
 
@@ -52,34 +43,41 @@ public class TicTacToeHub : GameHubBase<TicTacToeGame, TicTacToePlayer>, IGameHu
 	}
 
 	public async Task MarkBoardAndSend(int i, int j) =>
-        await Clients.Client(OpponentId).SendAsync(Components.Applets.TicTacToe.RECEIVERS_MARK, i, j);
+        await Clients.Client(OpponentId).SendAsync("ReceiveMarkData", i, j);
 
-	public void ReceiveOpponentId(string opponentId) => 
-		OpponentId = opponentId;
-
-	public async Task ExposedPlayerJoinGame(string gameNameId)
+	public override async Task ReadyToConnect()
 	{
-		await PlayerJoinGame(Games, gameNameId);
+		await base.ReadyToConnect();
+		
+		if (Game.Players.Count == 2)
+		{
+			OpponentId = Game.Players[0].Id;
 
-		OpponentId = Game.Players[0].Id;
+			string symbol = Random.Shared.Next(0, 2) == 1 ? "X" : "O";
+			string opponentSymbol = symbol == "X" ? "O" : "X";
 
-		string symbol = Random.Shared.Next(0, 2) == 1 ? "X" : "O";
-		string opponentSymbol = symbol == "X" ? "O" : "X";
-
-		await Clients.Client(OpponentId).SendAsync("ReceiveOpponentId", Context.ConnectionId);
-
-		await Clients.Caller.SendAsync("ReceiveSymbol", symbol);
-		await Clients.Client(OpponentId).SendAsync("ReceiveSymbol", opponentSymbol);
-		await NotifyGameStart();
+			await Clients.Caller.SendAsync("ReceiveSymbol", symbol);
+			await Clients.Client(OpponentId).SendAsync("ReceiveSymbol", opponentSymbol);
+			await NotifyGameStart();
+		}
 	}
 
+	public override Task OtherPlayerConnected()
+	{
+		OpponentId = Game.Players[1].Id;
+		return base.OtherPlayerConnected();
+	}
+
+	public async Task ExposedClientJoinGame(string gameNameId) =>
+		await ClientJoinGame(_games, gameNameId);
+
 	public async Task ExposedCreateNewGame() =>
-		await CreateNewGame(Games);
+		await CreateNewGame(_games);
 
 	public async Task ExposedCreatePlayer(string username) =>
-		await CreatePlayer(Players, username);
+		await CreatePlayer(_players, username);
 
 	public async Task ExposedOtherPlayerDisconnected(string connectionId) =>
-		await OtherPlayerDisconnected(Players, connectionId);
+		await OtherPlayerDisconnected(_players, connectionId);
 	#endregion
 }

@@ -54,14 +54,14 @@ public interface IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPla
 	///		containing all the <typeparamref name="TGame"/> instances in that Hub
 	/// </param>
 	/// <returns></returns>
-	Task PlayerJoinGame(List<TGame> gameList, string gameNameId);
+	Task ClientJoinGame(List<TGame> gameList, string gameNameId);
 
 	/// <summary>
 	/// Detect tab/browser close through JavaScript and propagate the event to this method to force the 
 	/// <see cref="Hub.OnDisconnectedAsync(Exception?)"/> method
 	/// </summary>
 	/// <returns></returns>
-	Task ForceDisconnectOnBrowserClose();
+	Task OnBrowserClose();
 
 	/// <summary>
 	/// [HUB --> CLIENT] Send the Games list to the caller as a JSON string
@@ -70,7 +70,7 @@ public interface IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPla
 	Task SendGameListToClient(List<TGame> games);
 	/// <summary>
 	/// [HUB --> CLIENT] Broadcasts message to ALL clients in <see cref="Game"/> indicating they should set their 
-	/// gameState to <see cref="GameState.Playing"/>
+	/// gameState to <see cref="GameStates.Playing"/>
 	/// </summary>
 	/// <returns></returns>
 	Task NotifyGameStart();
@@ -83,5 +83,5 @@ public interface IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPla
 	///		<item> [TO CALLER ONLY] -> JSON string of the entire <see cref="Game.Players"/> list </item>
 	/// </list>
 	/// </summary>
-	Task NotifyOthersOfNewConnection();
+	Task NotifyOfClientConnection();
 }

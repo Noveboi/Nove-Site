@@ -1,0 +1,113 @@
+﻿@page "/applets/{gameTypeString}/lobby" 
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using Microsoft.AspNetCore.SignalR.Client
+@using Newtonsoft.Json
+
+@inject NavigationManager NavManager
+@inject IServiceProvider ServiceProvider
+
+<div class="d-flex flex-column mt-1 mb-1 w-75">
+	@if (games is null)
+	{
+		<h1 class="display-4 text-light">Loading game data, please wait...</h1>
+	}
+	else
+	{
+		foreach (var game in games) 
+		{
+			var currentGame = game;
+			bool fullGame = game.Players.Count == game.PlayerCapacity;
+
+			<div class="container text-light border border-primary rounded mt-2 mb-2 border-2" 
+				id="@(fullGame ? "game-row-unavailable" : "game-row-available")" 
+				@onclick="() => GameClicked(currentGame)">
+				<div class="row align-items-center user-select-none">
+					@* Game ID/Name Columm *@
+					<div class="col-3 fs-5 d-flex border-end border-primary border-2 align-self-stretch align-items-center justify-content-center bg-info">
+						@game.NameId
+					</div>
+					<div class="col @(fullGame ? "bg-secondary" : "bg-primary")">
+						<div class="d-flex flex-column justify-content-center">
+							<p class="text-center fs-4">
+								@game.Players.Count / @game.PlayerCapacity Players
+							</p>
+							<div class="d-flex flex-row fs-6 align-self-center text-center">
+								@for (int i = 0; i < game.Players.Count; i++)
+								{
+									if (i < game.Players.Count - 1)
+										@(game.Players[i].Name + ", ")
+									else
+										@(game.Players[i].Name)
+								}
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		}
+
+		<button class="btn btn-primary" @onclick="CreateGame">Create a new game</button>
+	}
+</div>
+
+@code {
+	[Parameter]
+	public string GameTypeString { get; set; }
+
+	List<GameModel>? games;
+	GameHubProtocol Protocol => GameHubProtocol.Singleton;
+
+	HubConnection? hubConnection;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			hubConnection = ServiceProvider.GetKeyedService<HubConnection>($"{GameTypeString}hub")
+				?? throw new Exception("Couldn't find service!");
+
+
+			hubConnection.On<string>(Protocol[Receivers.GetGameList], async (gamesJson) =>
+			{
+				games = JsonConvert.DeserializeObject<List<GameModel>>(gamesJson);
+				await InvokeAsync(StateHasChanged);
+			});
+			hubConnection.On<string>(Protocol[Receivers.UpdateGameList], async (gameJson) =>
+			{
+				var game = JsonConvert.DeserializeObject<GameModel>(gameJson)
+					?? throw new Exception("Deserialized into NULL game model!");
+				games?.Add(game);
+				await InvokeAsync(StateHasChanged);
+			});
+
+
+			if (hubConnection.State != HubConnectionState.Connected)
+				await hubConnection.StartAsync();
+
+			var sessionStorage = ServiceProvider.GetRequiredService<ProtectedSessionStorage>();
+			var result = await sessionStorage.GetAsync<string>("username");
+			string username = result.Success ? result.Value
+				?? throw new Exception("Got NULL value from session storage")
+				: "SESSION_FAILURE";
+
+			await hubConnection.SendAsync(Protocol[Senders.CreatePlayer], username);
+		}
+	}
+
+	async void GameClicked(GameModel game)
+	{
+		NavManager.NavigateTo($"applets/{GameTypeString}");
+
+		if (hubConnection is not null)
+			await hubConnection.SendAsync(Protocol[Senders.ClientJoinGame], game.NameId);
+	}
+
+	async Task CreateGame()
+	{
+		if (hubConnection is not null)
+			await hubConnection.SendAsync(Protocol[Senders.CreateNewGame]);	
+
+		NavManager.NavigateTo($"applets/{GameTypeString}");
+	}
+}

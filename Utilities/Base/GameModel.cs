@@ -21,6 +21,12 @@ public class GameModel
         Players = [player1, player2];
     }
 
+    public GameModel(string name)
+    {
+        NameId = name;
+        Players = [];
+    }
+
     public GameModel(string name, PlayerModel player1)
     {
         NameId = name;
@@ -38,6 +44,6 @@ public class GameModel
 
     public List<PlayerModel> Players { get; set; }
 
-    public override string ToString()
-        => $"\"{NameId}\" ({Players.Count} / {PlayerCapacity} Players)";
+    public override string ToString() => 
+        $"\"{NameId}\" ({Players.Count} / {PlayerCapacity} Players)";
 }
