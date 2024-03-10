@@ -61,3 +61,7 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+# Do not detect SCSS due to Bootstrap 
+*.scss linguist-detectable=false
+*.css linguist-detectable=false

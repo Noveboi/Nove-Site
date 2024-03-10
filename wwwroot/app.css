@@ -11898,6 +11898,28 @@ html, body {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
+.bg-image-blurred {
+  position: fixed;
+  top: 0;
+  left: 0;
+  background-image: url("img/home-bg.jpg");
+  /* Add the blur effect */
+  filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* Full height */
+  height: 100%;
+  width: 100%;
+  /* Center and scale the image nicely */
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  z-index: -1;
+}
+
+/* 
+    Used for h1 titles typically at the top of the page 
+    Use this when you want to place emphasis on some text
+*/
 .title-header {
   font-size: 2.5rem;
   font-weight: bold;
