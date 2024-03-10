@@ -61,7 +61,7 @@ public interface IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPla
 	/// <see cref="Hub.OnDisconnectedAsync(Exception?)"/> method
 	/// </summary>
 	/// <returns></returns>
-	Task ForceDisconnectOnBrowserClose();
+	Task OnBrowserClose();
 
 	/// <summary>
 	/// [HUB --> CLIENT] Send the Games list to the caller as a JSON string

@@ -20,9 +20,6 @@ namespace LearningBlazor.Utilities.Base;
 public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPlayer : PlayerModel
 {
 	#region Fields
-
-	public const string SENDERS_PLAYER_BROWSER_CLOSE = nameof(ForceDisconnectOnBrowserClose);
-
 	// HubCallerContext.Items Keys
 	protected enum ItemKeys
 	{
@@ -63,6 +60,8 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 		}
 		set => Context.Items[ItemKeys.UserPlaying] = value;
 	}
+
+	GameHubProtocol Protocol => GameHubProtocol.Singleton;
 	#endregion
 	#region Server-Only Methods
 
@@ -102,11 +101,11 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 	{
 		Game.Players.Remove(Player);
 
-		await NotifyGamePlayers(GameComponentBase<TPlayer>.RECEIVERS_OTHER_DISCONNECTED, Player.Id);
+		await NotifyGamePlayers(Protocol[Receivers.OtherDisconnected], Player.Id);
 		await base.OnDisconnectedAsync(exception);
 	}
 
-	public async Task ForceDisconnectOnBrowserClose() =>
+	public async Task OnBrowserClose() =>
 		await OnDisconnectedAsync(new Exception("Player disconnected by means of closing browser or tab."));
 
 	public async Task SendGameListToClient(List<TGame> games) 
@@ -124,7 +123,7 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 
 		var playerJson = JsonConvert.SerializeObject(Player);
 
-		await Clients.Caller.SendAsync(GameComponentBase<TPlayer>.RECEIVERS_GET_PLAYER_MODEL, playerJson);
+		await Clients.Caller.SendAsync(Protocol[Receivers.GetPlayerModel], playerJson);
 	}
 
 	public async Task PlayerJoinGame(List<TGame> games, string gameNameId)
@@ -138,15 +137,15 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 	}
 
 	public async Task NotifyGameStart() =>
-		await NotifyGamePlayers(GameComponentBase<TPlayer>.RECEIVERS_BEGIN_GAME);
+		await NotifyGamePlayers(Protocol[Receivers.OnBeginGame]);
 
     public async Task NotifyOthersOfNewConnection()
 	{
 		string playerJson = JsonConvert.SerializeObject(Player);
 		string gamePlayersJson = JsonConvert.SerializeObject(Game.Players);
 
-		await Clients.Caller.SendAsync(GameComponentBase<TPlayer>.RECEIVERS_SELF_CONNECTED, gamePlayersJson);
-		await NotifyGamePlayers(GameComponentBase<TPlayer>.RECEIVERS_OTHER_CONNECTED, playerJson);
+		await Clients.Caller.SendAsync(Protocol[Receivers.SelfConnected], gamePlayersJson);
+		await NotifyGamePlayers(Protocol[Receivers.OtherConnected], playerJson);
 	}
 
 	public async Task CreateNewGame(List<TGame> games)
@@ -159,7 +158,7 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 		string gameJson = JsonConvert.SerializeObject(game);
 
 		// For anyone else in this hub, send the updated game list 
-		await Clients.Others.SendAsync(GameComponentBase<TPlayer>.RECEIVERS_UPDATE_GAME_LIST, gameJson);
+		await Clients.Others.SendAsync(Protocol[Receivers.UpdateGameList], gameJson);
 	}
 
 	public Task OtherPlayerDisconnected(Dictionary<string, TPlayer> playerDict, string connectionId)

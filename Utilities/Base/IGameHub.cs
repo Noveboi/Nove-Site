@@ -3,8 +3,6 @@
 	/// <summary>
 	/// Interface for hubs that inherit from GameHubBase
 	/// </summary>
-	/// <typeparam name="TGame"></typeparam>
-	/// <typeparam name="TPlayer"></typeparam>
 	public interface IGameHub<TGame, TPlayer> : IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPlayer : PlayerModel
 	{
 		/// <summary>

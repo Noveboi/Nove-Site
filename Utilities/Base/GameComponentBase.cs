@@ -7,6 +7,7 @@ using LearningBlazor.Hubs;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using LearningBlazor.Utilities.TicTacToe;
 using Microsoft.JSInterop;
+using Microsoft.AspNetCore.Components.Server.Circuits;
 
 namespace LearningBlazor.Utilities.Base;
 /// <summary>
@@ -27,6 +28,7 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 
 	[Inject]
 	protected ILogger<GameComponentBase<TPlayer>> Logger { get; set; } = default!;
+	protected GameHubProtocol Protocol => GameHubProtocol.Singleton;
 
 	private HubConnection? hubConnection;
 
@@ -35,21 +37,12 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	protected List<PlayerModel> gamePlayers = [];
 	protected TPlayer? selfPlayer;
 
-	// Move these somewhere else (static class maybe?)
-	public const string RECEIVERS_BEGIN_GAME = nameof(BeginGame);
-	public const string RECEIVERS_SELF_CONNECTED = nameof(SelfConnected);
-	public const string RECEIVERS_OTHER_CONNECTED = nameof(OtherConnected);
-	public const string RECEIVERS_OTHER_DISCONNECTED = nameof(OtherDisconnected);
-	public const string RECEIVERS_GET_GAME_LIST = nameof(GetGameList);
-	public const string RECEIVERS_GET_PLAYER_MODEL = nameof(GetPlayerModel);
-	public const string RECEIVERS_UPDATE_GAME_LIST = nameof(UpdateGameList);
-
-	public const string SENDERS_JOIN_GAME = nameof(OnGameJoinClick);
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
 		if (firstRender)
+		{
 			await JS.InvokeVoidAsync("registerListeners", DotNetObjectReference.Create(this));
+		}
     }
 
     protected async Task HandleExit()
@@ -69,13 +62,13 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 				.Build();
 
 		// Set up receivers
-		hubConnection.On(RECEIVERS_BEGIN_GAME, BeginGame);
-		hubConnection.On<string>(RECEIVERS_GET_GAME_LIST, GetGameList);
-		hubConnection.On<string>(RECEIVERS_OTHER_CONNECTED, OtherConnected);
-		hubConnection.On<string>(RECEIVERS_SELF_CONNECTED, SelfConnected);
-		hubConnection.On<string>(RECEIVERS_OTHER_DISCONNECTED, OtherDisconnected);
-		hubConnection.On<string>(RECEIVERS_GET_PLAYER_MODEL, GetPlayerModel);
-		hubConnection.On<string>(RECEIVERS_UPDATE_GAME_LIST, UpdateGameList);
+		hubConnection.On(Protocol[Receivers.OnBeginGame], OnBeginGame);
+		hubConnection.On<string>(Protocol[Receivers.GetGameList], GetGameList);
+		hubConnection.On<string>(Protocol[Receivers.OtherConnected], OtherConnected);
+		hubConnection.On<string>(Protocol[Receivers.SelfConnected], SelfConnected);
+		hubConnection.On<string>(Protocol[Receivers.OtherDisconnected], OtherDisconnected);
+		hubConnection.On<string>(Protocol[Receivers.GetPlayerModel], GetPlayerModel);
+		hubConnection.On<string>(Protocol[Receivers.UpdateGameList], UpdateGameList);
 
 		await hubConnection.StartAsync();
 
@@ -89,7 +82,7 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		Thread.CurrentThread.Name = $"{username}'s thread";
 #endif
 
-		await hubConnection.SendAsync(TicTacToeHub.SENDER_CREATE_PLAYER, username);
+		await hubConnection.SendAsync(Protocol[Senders.CreatePlayer], username);
 
 		Logger.LogInformation("Succesfully built hub connection for player: \"{username}\"", username);
 	}
@@ -163,7 +156,7 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	/// <summary>
 	/// Sets the <see cref="GameState"/> to <see cref="GameState.Playing"/> and forces UI re-render
 	/// </summary>
-	private async Task BeginGame()
+	private async Task OnBeginGame()
 	{
 		gameState = GameState.Playing;
 		await InvokeAsync(StateHasChanged);
@@ -176,7 +169,7 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	public virtual async Task OtherConnected(string json)
 	{
 		if (hubConnection is not null)
-			await hubConnection.SendAsync(RECEIVERS_OTHER_CONNECTED);
+			await hubConnection.SendAsync(Protocol[Receivers.OtherConnected]);
 
 		var player = JsonConvert.DeserializeObject<PlayerModel>(json)
 			?? throw new Exception("Deserialized into NULL obhect when trying to get Player!");
@@ -197,7 +190,7 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	protected virtual async Task OtherDisconnected(string playerId)
 	{
 		if (hubConnection is not null)
-			await hubConnection.SendAsync(TicTacToeHub.SENDER_OTHER_DISCONNECTED, playerId);
+			await hubConnection.SendAsync(Protocol[Senders.OtherPlayerDisconnected], playerId);
 
 		var playerToRemove = gamePlayers.FirstOrDefault(p => p.Id == playerId)
 			?? throw new Exception("Couldn't find player to remove from gamePlayers");
@@ -235,7 +228,7 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	protected async Task CreateNewGame()
 	{
 		if (hubConnection is not null)
-			await hubConnection.SendAsync(TicTacToeHub.SENDER_CREATE_NEW_GAME);
+			await hubConnection.SendAsync(Protocol[Senders.CreateNewGame]);
 
 		gameState = GameState.Waiting;
 		gamePlayers.Add(selfPlayer!);
@@ -246,14 +239,14 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	protected async Task OnGameJoinClick(GameModel game)
 	{
 		if (hubConnection is not null)
-			await hubConnection.SendAsync(TicTacToeHub.SENDER_PLAYER_JOIN, game.NameId);
+			await hubConnection.SendAsync(Protocol[Senders.PlayerJoinGame], game.NameId);
 	}
 
 	[JSInvokable]
 	public async Task OnBrowserTabClose()
 	{
 		if (hubConnection is not null)
-			await hubConnection.SendAsync(GameHubBase<TicTacToeGame, TicTacToePlayer>.SENDERS_PLAYER_BROWSER_CLOSE);
+			await hubConnection.SendAsync(Protocol[Senders.OnBrowserClose]);
 	}
 
 	public async ValueTask DisposeAsync()
