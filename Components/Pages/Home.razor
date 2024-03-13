@@ -1,27 +1,30 @@
 ﻿@page "/"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
-@inject ProtectedSessionStorage SessionStorage
 @inject NavigationManager NavManager
+@inject UserService userService
 
 <PageTitle>Home</PageTitle>
 
 <div class="bg-image-blurred" />
 <div class="d-flex flex-column align-items-center h-75 z-1">
 
-	@if (submittedUsername == false)
+	@* Show the "Enter Username" form if a username for the user doesn't exist *@
+	@if (userService.UsernameExists == false)
 	{
 		<h1 class="title-header title-header-opaque">Welcome!</h1>
 		<div class="opaque-box">
 			<p class="h5 fw-lighter w-75 text-center">
 				Please enter your username below!
 			</p>
-			<form @onsubmit="UsernameEntered" class="mt-4 d-flex flex-column align-items-center">
+			<form @onsubmit="OnUsernameSubmit" class="mt-4 d-flex flex-column align-items-center">
 				<input type="text" @bind="username" class="text-box"/>
 				<button type="submit" class="btn btn-primary mt-2">Confirm</button>
 			</form>
 		</div>
 	}
+
+	@* Show this if a username exists *@
 	else 
 	{
 		<h1 class="title-header title-header-opaque">All ready! Where to next?</h1>
@@ -35,14 +38,16 @@
 </div>
 
 @code {
-	bool submittedUsername = false;
 	string username = string.Empty;
-
 	IEnumerable<string>? mainPages;
 
-	async Task UsernameEntered()
+	private async Task OnUsernameSubmit()
 	{
-		await SessionStorage.SetAsync("username", username);
-		submittedUsername = true;
+		if (username == string.Empty)
+		{
+			// TODO: add validation check
+		}
+
+		await userService.SetUsernameAsync(username);
 	}
 }

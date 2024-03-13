@@ -126,3 +126,6 @@ $theme-colors: map-merge($theme-colors, $custom-colors);
     background-color: rgba($red-600, 0.75);
 }
 
+.clickable-link {
+    cursor: pointer;
+}

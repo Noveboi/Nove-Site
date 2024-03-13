@@ -159,7 +159,7 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 	public virtual Task OtherPlayerConnected() 
 		=> Task.CompletedTask;
 
-	public async Task CreateNewGame(List<TGame> games)
+	public Task CreateNewGame(List<TGame> games)
 	{
 		var game = Activator.CreateInstance(typeof(TGame)) as TGame
 			?? throw new Exception($"Couldn't instantiate {nameof(TGame)} object");
@@ -168,6 +168,8 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 
 		string gameJson = JsonConvert.SerializeObject(Game);
 		string playerJson = JsonConvert.SerializeObject(Player);
+
+		return Task.CompletedTask;
 	}
 
 	public Task OtherPlayerDisconnected(Dictionary<string, TPlayer> playerDict, string connectionId)

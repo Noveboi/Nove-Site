@@ -1,21 +1,11 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager NavManager
+@inject UserService User
 
 <div class="page vh-100">
     <main>
         <article class="content vh-100 z-1 position-relative ps-0 pe-0">
-            <nav class="navbar navbar-expand-lg z-2 p-3 mb-3 bg-dark">
-                <a class="navbar-brand" href="#">Novè</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
-                    <div class="navbar-nav">
-                        <a class="nav-item nav-link" href="/">Home</a>
-                        <a class="nav-item nav-link" href="applets">Applets</a>
-                        <a class="nav-item nav-link" href="blog">Blog</a>
-                    </div>
-                </div>
-            </nav>
+            <NavBar />
             @Body
         </article>
     </main>
@@ -26,3 +16,7 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+
+}

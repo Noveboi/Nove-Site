@@ -1,0 +1,39 @@
+﻿@inject NavigationManager NavManager
+@inject UserService User
+@rendermode InteractiveServer
+
+<nav class="navbar navbar-expand-lg z-2 p-3 mb-3 bg-dark">
+    <a class="navbar-brand" href="#">Novè</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+        <div class="navbar-nav">
+            <NavLink class="nav-item nav-link clickable-link" @onclick="@(() => NavigateTo("/"))">Home</NavLink>
+            <NavLink class="nav-item nav-link clickable-link" @onclick="@(() => NavigateTo("/applets"))">Applets</NavLink>
+            <NavLink class="nav-item nav-link clickable-link" @onclick="@(() => NavigateTo("/blog"))">Blog</NavLink>
+        </div>
+    </div>
+</nav>
+@code {
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            NavManager.RegisterLocationChangingHandler(locChanged =>
+            {
+                if (User.UsernameExists == false)
+                {
+                    locChanged.PreventNavigation();
+                }
+
+                return ValueTask.CompletedTask;
+            });
+        }
+    }
+
+    void NavigateTo(string href)
+    {
+        NavManager.NavigateTo(href);
+    }
+}

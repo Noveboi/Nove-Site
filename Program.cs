@@ -2,8 +2,10 @@ using LearningBlazor.Components;
 using LearningBlazor.Hubs;
 using LearningBlazor.Utilities;
 using LearningBlazor.Utilities.Base;
+using LearningBlazor.Utilities.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Server.Circuits;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -15,6 +17,12 @@ builder.Services.AddRazorComponents()
 builder.Services.AddResponseCompression(opts =>
 {
 	opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["application/octet-stream"]);
+});
+
+// Add the "User" service to the DI container
+builder.Services.AddScoped(sp =>
+{
+	return new UserService(sp.GetRequiredService<ProtectedSessionStorage>());
 });
 
 // Add necessary HubConnections to the scope of the 

@@ -12000,3 +12000,7 @@ textarea.form-control-lg {
 .main-page-card:hover {
   background-color: rgba(176, 42, 55, 0.75);
 }
+
+.clickable-link {
+  cursor: pointer;
+}
