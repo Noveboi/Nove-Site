@@ -13,7 +13,7 @@ Secondly, the code needs to be easily understood and well-documented for everyon
 Of course all this would be boring without having ideas for applets and designs! 
 
 ## Technologies
-- [ASP.NET Core](https://dotnet.microsoft.com/en-us/learn/aspnet/what-is-aspnet-core)
+- [ASP.NET Core](https://dotnet.microsoft.com/en-us/learn/aspnet/what-is-aspnet-core) (using .NET 8)
 - [Blazor Web App](https://dotnet.microsoft.com/en-us/apps/aspnet/web-apps/blazor) (Project Structure)
 - [PostgreSQL](https://www.postgresql.org/) (for DB and Data Access)
 - [SignalR](https://dotnet.microsoft.com/en-us/apps/aspnet/signalr) (for Client-Server communication)
