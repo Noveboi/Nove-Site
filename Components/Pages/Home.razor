@@ -44,6 +44,7 @@
 		if (username == string.Empty)
 		{
 			// TODO: add validation check
+			return;
 		}
 
 		await userService.SetUsernameAsync(username);
