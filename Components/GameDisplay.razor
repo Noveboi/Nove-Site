@@ -1,0 +1,42 @@
+﻿<div class="container text-light border border-primary rounded mt-2 mb-2 border-2" id="@(fullGame ? "game-row-unavailable" : "game-row-available")"
+	 @onclick="() => OnGameClicked.InvokeAsync(Game)">
+	<div class="row align-items-center user-select-none">
+		@* Game ID/Name Columm *@
+		<div class="col-3 fs-5 d-flex border-end border-primary border-2 align-self-stretch align-items-center justify-content-center bg-info">
+			@Game.NameId
+		</div>
+		<div class="col @(fullGame ? "bg-secondary" : "bg-primary")">
+			<div class="d-flex flex-column justify-content-center">
+				<p class="text-center fs-4">
+					@Game.Players.Count / @Game.PlayerCapacity Players
+				</p>
+				<div class="d-flex flex-row fs-6 align-self-center text-center">
+					@for (int i = 0; i < Game.Players.Count; i++)
+					{
+						if (i < Game.Players.Count - 1)
+							@(Game.Players[i].Name + ", ")
+						else
+							@(Game.Players[i].Name)
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+	[Parameter]
+	public GameModel Game { get; set; } = default!;
+
+	[Parameter]
+	public EventCallback<GameModel> OnGameClicked { get; set; }
+
+	bool fullGame = false;
+
+	protected override async Task OnParametersSetAsync()
+	{
+		await base.OnParametersSetAsync();
+
+		fullGame = Game.Players.Count >= Game.PlayerCapacity;
+	}
+}
