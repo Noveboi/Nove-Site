@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.SignalR.Client;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,8 +36,12 @@ builder.Services.AddKeyedScoped("tictactoehub", (sp, obj) =>
 		.Build();
 });
 
+var logger = new LoggerConfiguration()
+	.ReadFrom.Configuration(builder.Configuration)
+	.Enrich.FromLogContext()
+	.CreateLogger();
 builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
+builder.Logging.AddSerilog(logger);
 
 var app = builder.Build();
 

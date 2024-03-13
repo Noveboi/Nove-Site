@@ -1,5 +1,6 @@
 ﻿@inject NavigationManager NavManager
 @inject UserService User
+@implements IDisposable
 @rendermode InteractiveServer
 
 <nav class="navbar navbar-expand-lg z-2 p-3 mb-3 bg-dark">
@@ -9,17 +10,20 @@
     </button>
     <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
         <div class="navbar-nav">
-            <NavLink class="nav-item nav-link clickable-link" @onclick="@(() => NavigateTo("/"))">Home</NavLink>
-            <NavLink class="nav-item nav-link clickable-link" @onclick="@(() => NavigateTo("/applets"))">Applets</NavLink>
-            <NavLink class="nav-item nav-link clickable-link" @onclick="@(() => NavigateTo("/blog"))">Blog</NavLink>
+            <NavLink class="@cursorClass" @onclick="@(() => NavigateTo("/"))">Home</NavLink>
+            <NavLink class="@cursorClass" @onclick="@(() => NavigateTo("/applets"))">Applets</NavLink>
+            <NavLink class="@cursorClass" @onclick="@(() => NavigateTo("/blog"))">Blog</NavLink>
         </div>
     </div>
 </nav>
 @code {
+    string cursorClass = "nav-item nav-link not-clickable";
+
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
         {
+            User.UsernameSet += OnUsernameSet;
             NavManager.RegisterLocationChangingHandler(locChanged =>
             {
                 if (User.UsernameExists == false)
@@ -32,8 +36,19 @@
         }
     }
 
+    async void OnUsernameSet(object? sender, EventArgs e)
+    {
+        cursorClass = "nav-item nav-link clickable";
+        await InvokeAsync(StateHasChanged);
+    }
+
     void NavigateTo(string href)
     {
         NavManager.NavigateTo(href);
+    }
+
+    public void Dispose()
+    {
+        User.UsernameSet -= OnUsernameSet;
     }
 }

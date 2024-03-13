@@ -14,10 +14,14 @@ public class UserService(ProtectedSessionStorage sessionStorage)
 
 	public bool UsernameExists => _isUsernameSubmitted;
 
+	public event EventHandler UsernameSet;
+
 	public async Task SetUsernameAsync(string username)
 	{
 		await _sessionStorage.SetAsync(USERNAME_STORAGE_KEY, username);
 		_isUsernameSubmitted = true;
+
+		UsernameSet?.Invoke(this, EventArgs.Empty);
 	}
 
 	public async Task<string> GetUsernameAsync()

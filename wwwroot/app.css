@@ -12001,6 +12001,10 @@ textarea.form-control-lg {
   background-color: rgba(176, 42, 55, 0.75);
 }
 
-.clickable-link {
+.not-clickable {
+  cursor: not-allowed;
+}
+
+.clickable {
   cursor: pointer;
 }
