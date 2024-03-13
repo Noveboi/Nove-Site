@@ -19,4 +19,7 @@ Of course all this would be boring without having ideas for applets and designs!
 - [SignalR](https://dotnet.microsoft.com/en-us/apps/aspnet/signalr) (for Client-Server communication)
 - [Azure](https://portal.azure.com/) (for publishing the site on the web)
 
+## Caveats
+- If you want to add styles to the application, you can use the /Styles/app.scss file. You will however need a SASS compiler that can convert the file in a pure .css file. Else your style additions will **not** be registered. Click [here](https://marketplace.visualstudio.com/items?itemName=Failwyn.WebCompiler64) to download the SASS compiler that I use.
+
 [^1]: An **applet** is a small 'application' (not really) that runs inside the server. They are simply Razor Components that have the @page directive and are tagged with the attribute [Utilities/AppletAttribute.cs](https://github.com/Noveboi/Nove-Site/blob/38711cddaa8b58148c4c33dbcf667d1e75a0ce77/Utilities/AppletAttribute.cs)
