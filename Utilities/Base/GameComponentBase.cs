@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using LearningBlazor.Utilities.TicTacToe;
 using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components.Server.Circuits;
+using Serilog;
+using System.Net.NetworkInformation;
 
 namespace LearningBlazor.Utilities.Base;
 /// <summary>
@@ -19,6 +21,7 @@ namespace LearningBlazor.Utilities.Base;
 /// </summary>
 public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where TPlayer : PlayerModel
 {
+
 	[Inject]
 	private NavigationManager NavManager { get; set; } = default!;
 	[Inject]
@@ -27,15 +30,22 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	private IServiceProvider ServiceProvider { get; set; } = default!;
 
 	private HubConnection? hubConnection;
+	private List<PlayerModel> gamePlayers = [];
 
-	[Inject]
-	protected ILogger<GameComponentBase<TPlayer>> Logger { get; set; } = default!;
 	protected GameHubProtocol Protocol => GameHubProtocol.Singleton;
 
+	/// <summary>
+	/// The GameState helps deriving components dynamically render the proper UI elements based on the state of the game.
+	/// </summary>
 	protected GameStates GameState = GameStates.Waiting;
-	protected List<GameModel> lobbyGames = [];
-	protected List<PlayerModel> gamePlayers = [];
-	protected TPlayer? selfPlayer;
+	/// <summary>
+	/// Maintains the other players in the Game the user is in. This list is automatically updated in the <see cref="GameComponentBase{TPlayer}"/> class.
+	/// </summary>
+	protected IEnumerable<PlayerModel> GamePlayers => gamePlayers;
+	/// <summary>
+	/// Provides information about the user such as the Username and the Connection ID
+	/// </summary>
+	protected TPlayer? Self;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -45,15 +55,25 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		}
     }
 
+	/// <summary>
+	/// Navigates the user back to the home page.
+	/// </summary>
+	/// <returns></returns>
     protected async Task HandleExit()
 	{
-		Logger.LogInformation("Exiting by means of redirect");
+		Log.Information("Exiting by means of controlled redirect");
 		if (hubConnection is not null)
 			await hubConnection.StopAsync();
 
 		NavManager.NavigateTo("/");
 	}
 
+	/// <summary>
+	/// Builds the <see cref="HubConnection"/> and sets up receivers (listeners) using <see cref="HubConnection.On(string, Type[], Func{object?[], object, Task}, object)"/>
+	/// </summary>
+	/// <param name="hubUriName">The registered name of the Hub in the application's services (see <see cref="Program"/>)</param>
+	/// <returns></returns>
+	/// <exception cref="Exception"></exception>
 	protected async Task SetUpHubConnection(string hubUriName)
 	{
 		hubConnection = ServiceProvider.GetKeyedService<HubConnection>(hubUriName)
@@ -146,7 +166,11 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 
 	/// <summary>
 	/// This method will fire when ANOTHER player has connected to the <see cref="GameModel"/> that the client is 
-	/// currently in
+	/// currently in.
+	/// <para>
+	/// IMPORTANT NOTE: This method does NOT send the player object to the <see cref="Hub"/>!
+	///		This is because the Hub can infer who the new player is thanks to the <see langword="static"/> "Games" instance
+	/// </para>
 	/// </summary>
 	public virtual async Task OtherConnected(string json)
 	{
@@ -157,24 +181,49 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 
 		if (hubConnection is not null)
 			await hubConnection.InvokeAsync(Protocol[Senders.OtherPlayerConnected]);
-	} 
+	}
 
+	/// <summary>
+	/// Receive the <typeparamref name="TPlayer"/> object and the <see cref="List{T}"/> of <see cref="PlayerModel"/> in the game.
+	/// <para>
+	///		You can override this method to add any extra business logic before or after this base implementation.
+	/// </para>
+	/// </summary>
+	/// <param name="playerJson">The <typeparamref name="TPlayer"/> object encoded in JSON</param>
+	/// <param name="gamePlayersJson">The <see cref="List{T}"/> of <see cref="PlayerModel"/> objects encoded in JSON</param>
+	/// <returns></returns>
+	/// <exception cref="Exception"></exception>
 	protected virtual async Task SelfConnected(string playerJson, string gamePlayersJson)
 	{
 		var player = JsonConvert.DeserializeObject<TPlayer>(playerJson)
 			?? throw new Exception("Deserialized ino NULL object when trying to get player object!");
+
+		// The JSON string here can be empty if the Game the user has joined has 0 players
 		if (gamePlayersJson != string.Empty)
 			gamePlayers = JsonConvert.DeserializeObject<List<PlayerModel>>(gamePlayersJson)
 				?? throw new Exception("Deserialized into NULL object when trying to get player list!");
 
-		selfPlayer = player;
-		gamePlayers.Add(selfPlayer);
+		Self = player;
+		gamePlayers.Add(Self);
+
+		Log.Information("Player {Name} executed method {Method}", Self.Name, nameof(SelfConnected));
 
 		await InvokeAsync(StateHasChanged);
 	}
 
+	/// <summary>
+	/// Receives the connection ID of the player who has disconnected and handles the removal of any reference of that player throughout the client.
+	/// 
+	/// <para>
+	///		You can override this method and add any extra business logic before/after the base implementation.
+	/// </para>
+	/// </summary>
+	/// <param name="playerId">The Connection ID of the player who has disconnected</param>
+	/// <returns></returns>
+	/// <exception cref="Exception"></exception>
 	protected virtual async Task OtherDisconnected(string playerId)
 	{
+		// Notify the Hub that a player has disconnected
 		if (hubConnection is not null)
 			await hubConnection.SendAsync(Protocol[Senders.OtherPlayerDisconnected], playerId);
 
@@ -184,11 +233,18 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		gamePlayers.Remove(playerToRemove);
 	}
 
+	/// <summary>
+	/// Invoked from JavaScript when the "beforeunload" event is fired in the browser.
+	/// </summary>
+	/// <returns></returns>
 	[JSInvokable]
 	public async Task OnBrowserTabClose()
 	{
 		if (hubConnection is not null)
 			await hubConnection.SendAsync(Protocol[Senders.OnBrowserClose]);
+
+		string playerName = Self != null ? Self.Name : "Unregistered Player";
+		Log.Information("{Player} exited by closing tab/browser", playerName);
 	}
 
 	public async ValueTask DisposeAsync()

@@ -39,7 +39,7 @@
 			<div class="col">
 				<p class="fw-bold display-6"
 					style="@(isPlayerTurn ? "color: #cf2244" : "color: #eeeeee")">
-						@selfPlayer!.Name
+						@Self!.Name
 				</p>
 			</div>
 			<div class="col">
@@ -167,7 +167,7 @@ else
 
 	private Task ReceiveSymbol(string s) 
 	{
-		Logger.LogInformation("Player {Player} received symbol \"{Symbol}\"", selfPlayer!.Name, s);
+		Logger.LogInformation("Player {Player} received symbol \"{Symbol}\"", Self!.Name, s);
 		board.Symbol = s;
 		return Task.CompletedTask;
 	}

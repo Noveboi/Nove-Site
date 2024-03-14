@@ -76,8 +76,7 @@ public interface IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPla
 	Task NotifyGameStart();
 
 	/// <summary>
-	/// Sends out a message notifying ALL <typeparamref name="TGame"/> players (except the caller) of the new <typeparamref name="TPlayer"/> 
-	/// that joined the match. The following messages are broadcast:
+	/// Broadcasts the following messages:
 	/// <list type="bullet">
 	///		<item> [TO ALL PLAYERS EXCEPT CALLER] -> JSON string containing the caller's <typeparamref name="TPlayer"/> information </item>
 	///		<item> [TO CALLER ONLY] -> JSON string of the entire <see cref="Game.Players"/> list </item>
