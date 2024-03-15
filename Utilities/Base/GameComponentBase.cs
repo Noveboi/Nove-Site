@@ -22,11 +22,6 @@ namespace LearningBlazor.Utilities.Base;
 /// </summary>
 public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where TPlayer : PlayerModel
 {
-	public GameComponentBase()
-	{
-		gamePlayers = new ReadOnlyCollection<PlayerModel>(playerList);
-	}
-
 	[Inject]
 	private NavigationManager NavManager { get; set; } = default!;
 	[Inject]
@@ -37,19 +32,18 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	private HubConnection? hubConnection;
 	private List<PlayerModel> playerList = [];
 
-	// Backing field for GamePlayers property
-	private readonly ReadOnlyCollection<PlayerModel> gamePlayers;
-
 	protected GameHubProtocol Protocol => GameHubProtocol.Singleton;
 
 	/// <summary>
 	/// The GameState helps deriving components dynamically render the proper UI elements based on the state of the game.
 	/// </summary>
 	protected GameStates GameState = GameStates.Waiting;
+
 	/// <summary>
 	/// Maintains the other players in the Game the user is in. This list is automatically updated in the <see cref="GameComponentBase{TPlayer}"/> class.
 	/// </summary>
-	protected ReadOnlyCollection<PlayerModel> GamePlayers => gamePlayers;
+	protected IReadOnlyList<PlayerModel> GamePlayers => playerList;
+
 	/// <summary>
 	/// Provides information about the user such as the Username and the Connection ID
 	/// </summary>
