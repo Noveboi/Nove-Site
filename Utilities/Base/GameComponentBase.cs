@@ -10,6 +10,7 @@ using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components.Server.Circuits;
 using Serilog;
 using System.Net.NetworkInformation;
+using System.Collections.ObjectModel;
 
 namespace LearningBlazor.Utilities.Base;
 /// <summary>
@@ -21,6 +22,10 @@ namespace LearningBlazor.Utilities.Base;
 /// </summary>
 public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where TPlayer : PlayerModel
 {
+	public GameComponentBase()
+	{
+		gamePlayers = new ReadOnlyCollection<PlayerModel>(playerList);
+	}
 
 	[Inject]
 	private NavigationManager NavManager { get; set; } = default!;
@@ -30,7 +35,10 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	private IServiceProvider ServiceProvider { get; set; } = default!;
 
 	private HubConnection? hubConnection;
-	private List<PlayerModel> gamePlayers = [];
+	private List<PlayerModel> playerList = [];
+
+	// Backing field for GamePlayers property
+	private readonly ReadOnlyCollection<PlayerModel> gamePlayers;
 
 	protected GameHubProtocol Protocol => GameHubProtocol.Singleton;
 
@@ -41,7 +49,7 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	/// <summary>
 	/// Maintains the other players in the Game the user is in. This list is automatically updated in the <see cref="GameComponentBase{TPlayer}"/> class.
 	/// </summary>
-	protected IEnumerable<PlayerModel> GamePlayers => gamePlayers;
+	protected ReadOnlyCollection<PlayerModel> GamePlayers => gamePlayers;
 	/// <summary>
 	/// Provides information about the user such as the Username and the Connection ID
 	/// </summary>
@@ -90,6 +98,17 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	}
 
 	#region Receiver & Sender Wrappers
+	/// <summary>
+	/// Wrapper for <see cref="HubConnection"/>.On().
+	/// 
+	/// <para>
+	///		Receives a message from the <see cref="Hub"/> that makes the component run the method with the name 
+	///		specified in <paramref name="methodName"/>. The <paramref name="handler"/> takes in 0 arguments.
+	/// </para>
+	/// </summary>
+	/// <param name="methodName"> The name of the method declared in the Component </param>
+	/// <param name="handler"> What actions to take when called. </param>
+	/// <exception cref="Exception"></exception>
 	protected void AddReceiver(string methodName, Func<Task> handler)
 	{
 		if (hubConnection is null)
@@ -98,6 +117,17 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		hubConnection.On(methodName, handler);
 	}
 
+	/// <summary>
+	/// Wrapper for <see cref="HubConnection"/>.On().
+	/// 
+	/// <para>
+	///		Receives a message from the <see cref="Hub"/> that makes the component run the method with the name 
+	///		specified in <paramref name="methodName"/>. The <paramref name="handler"/> takes in 1 argument.
+	/// </para>
+	/// </summary>
+	/// <param name="methodName"> The name of the method declared in the Component </param>
+	/// <param name="handler"> What actions to take when called. </param>
+	/// <exception cref="Exception"></exception>
 	protected void AddReceiver<T1>(string methodName, Func<T1, Task> handler)
 	{
 		if (hubConnection is null)
@@ -106,6 +136,17 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		hubConnection.On(methodName, handler);
 	}
 
+	/// <summary>
+	/// Wrapper for <see cref="HubConnection"/>.On().
+	/// 
+	/// <para>
+	///		Receives a message from the <see cref="Hub"/> that makes the component run the method with the name 
+	///		specified in <paramref name="methodName"/>. The <paramref name="handler"/> takes in 2 arguments.
+	/// </para>
+	/// </summary>
+	/// <param name="methodName"> The name of the method declared in the Component </param>
+	/// <param name="handler"> What actions to take when called. </param>
+	/// <exception cref="Exception"></exception>
 	protected void AddReceiver<T1, T2>(string methodName, Func<T1, T2, Task> handler)
 	{
 		if (hubConnection is null)
@@ -114,6 +155,17 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		hubConnection.On(methodName, handler);
 	}
 
+	/// <summary>
+	/// Wrapper for <see cref="HubConnection"/>.On().
+	/// 
+	/// <para>
+	///		Receives a message from the <see cref="Hub"/> that makes the component run the method with the name 
+	///		specified in <paramref name="methodName"/>. The <paramref name="handler"/> takes in 3 arguments.
+	/// </para>
+	/// </summary>
+	/// <param name="methodName"> The name of the method declared in the Component </param>
+	/// <param name="handler"> What actions to take when called. </param>
+	/// <exception cref="Exception"></exception>
 	protected void AddReceiver<T1, T2, T3>(string methodName, Func<T1, T2, T3, Task> handler)
 	{
 		if (hubConnection is null)
@@ -122,6 +174,16 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		hubConnection.On(methodName, handler);
 	}
 
+	/// <summary>
+	/// Wrapper for <see cref="HubConnection"/>.SendAsync().
+	/// 
+	/// <para>
+	///		Sends a message to the <see cref="Hub"/>. <paramref name="methodName"/> tells the <see cref="Hub"/> what method to invoke.
+	///		The method specified in <paramref name="methodName"/> must take in 0 arguments.
+	/// </para>
+	/// </summary>
+	/// <param name="methodName"> The name of the method declared in the connected <see cref="Hub"/> </param>
+	/// <exception cref="Exception"></exception>
 	protected async Task SendToHub([CallerMemberName] string methodName = "")
 	{
 		if (hubConnection is null)
@@ -130,6 +192,16 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		await hubConnection.SendAsync(methodName);
 	}
 
+	/// <summary>
+	/// Wrapper for <see cref="HubConnection"/>.SendAsync().
+	/// 
+	/// <para>
+	///		Sends a message to the <see cref="Hub"/>. <paramref name="methodName"/> tells the <see cref="Hub"/> what method to invoke.
+	///		The method specified in <paramref name="methodName"/> must take in 1 arguments.
+	/// </para>
+	/// </summary>
+	/// <param name="methodName"> The name of the method declared in the connected <see cref="Hub"/> </param>
+	/// <exception cref="Exception"></exception>
 	protected async Task SendToHub(object? arg1, [CallerMemberName] string methodName = "")
 	{
 		if (hubConnection is null)
@@ -138,6 +210,16 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		await hubConnection.SendAsync(methodName, arg1);
 	}
 
+	/// <summary>
+	/// Wrapper for <see cref="HubConnection"/>.SendAsync().
+	/// 
+	/// <para>
+	///		Sends a message to the <see cref="Hub"/>. <paramref name="methodName"/> tells the <see cref="Hub"/> what method to invoke.
+	///		The method specified in <paramref name="methodName"/> must take in 2 arguments.
+	/// </para>
+	/// </summary>
+	/// <param name="methodName"> The name of the method declared in the connected <see cref="Hub"/> </param>
+	/// <exception cref="Exception"></exception>
 	protected async Task SendToHub(object? arg1, object? arg2, [CallerMemberName] string methodName = "")
 	{
 		if (hubConnection is null)
@@ -146,6 +228,16 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		await hubConnection.SendAsync(methodName, arg1, arg2);
 	}
 
+	/// <summary>
+	/// Wrapper for <see cref="HubConnection"/>.SendAsync().
+	/// 
+	/// <para>
+	///		Sends a message to the <see cref="Hub"/>. <paramref name="methodName"/> tells the <see cref="Hub"/> what method to invoke.
+	///		The method specified in <paramref name="methodName"/> must take in 3 arguments.
+	/// </para>
+	/// </summary>
+	/// <param name="methodName"> The name of the method declared in the connected <see cref="Hub"/> </param>
+	/// <exception cref="Exception"></exception>
 	protected async Task SendToHub(object? arg1, object? arg2, object? arg3, [CallerMemberName] string methodName = "")
 	{
 		if (hubConnection is null)
@@ -177,7 +269,7 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		var player = JsonConvert.DeserializeObject<PlayerModel>(json)
 			?? throw new Exception("Deserialized into NULL obhect when trying to get Player!");
 
-		gamePlayers.Add(player);
+		playerList.Add(player);
 
 		if (hubConnection is not null)
 			await hubConnection.InvokeAsync(Protocol[Senders.OtherPlayerConnected]);
@@ -200,11 +292,11 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 
 		// The JSON string here can be empty if the Game the user has joined has 0 players
 		if (gamePlayersJson != string.Empty)
-			gamePlayers = JsonConvert.DeserializeObject<List<PlayerModel>>(gamePlayersJson)
+			playerList = JsonConvert.DeserializeObject<List<PlayerModel>>(gamePlayersJson)
 				?? throw new Exception("Deserialized into NULL object when trying to get player list!");
 
 		Self = player;
-		gamePlayers.Add(Self);
+		playerList.Add(Self);
 
 		Log.Information("Player {Name} executed method {Method}", Self.Name, nameof(SelfConnected));
 
@@ -227,10 +319,10 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		if (hubConnection is not null)
 			await hubConnection.SendAsync(Protocol[Senders.OtherPlayerDisconnected], playerId);
 
-		var playerToRemove = gamePlayers.FirstOrDefault(p => p.Id == playerId)
+		var playerToRemove = playerList.FirstOrDefault(p => p.Id == playerId)
 			?? throw new Exception("Couldn't find player to remove from gamePlayers");
 
-		gamePlayers.Remove(playerToRemove);
+		playerList.Remove(playerToRemove);
 	}
 
 	/// <summary>

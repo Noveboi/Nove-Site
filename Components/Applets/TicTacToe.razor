@@ -122,7 +122,7 @@ else
 	{
 		await base.OtherConnected(json);
 		isPlayerTurn = true;
-		opponentName = gamePlayers[1].Name;
+		opponentName = GamePlayers[1].Name;
 
 		await InvokeAsync(StateHasChanged);
 	}
@@ -131,8 +131,8 @@ else
 	{
 		await base.SelfConnected(playerJson, gamePlayersJson);
 
-		if (gamePlayers.Count == 2)
-			opponentName = gamePlayers[0].Name;
+		if (GamePlayers.Count() == 2)
+			opponentName = GamePlayers[0].Name;
 	}
 
 	private async Task SendPlayAgainRequest()
@@ -167,7 +167,7 @@ else
 
 	private Task ReceiveSymbol(string s) 
 	{
-		Logger.LogInformation("Player {Player} received symbol \"{Symbol}\"", Self!.Name, s);
+		Log.Information("Player {Player} received symbol \"{Symbol}\"", Self!.Name, s);
 		board.Symbol = s;
 		return Task.CompletedTask;
 	}
