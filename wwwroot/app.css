@@ -11894,6 +11894,10 @@ textarea.form-control-lg {
     display: none !important;
   }
 }
+.bg-disabled {
+  background-color: #9a9a9a;
+}
+
 .bg-image-blurred {
   position: fixed;
   top: 0;
@@ -12007,4 +12011,32 @@ textarea.form-control-lg {
 
 .clickable {
   cursor: pointer;
+}
+
+.game-display {
+  margin-top: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 1rem;
+  border: 5px solid #b02a37;
+  border-radius: 0.5rem;
+  width: 75%;
+  max-width: 540px;
+  display: grid;
+  grid-template-columns: 30% 75fr;
+}
+
+.game-display-nameid {
+  background: #dc3545;
+  border-right: 5px solid #f8f9fa;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+.game-display-info {
+  padding: 0.25rem 0;
+  background-color: #fd7e14;
 }

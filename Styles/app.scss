@@ -19,6 +19,10 @@ $theme-colors: map-merge($theme-colors, $custom-colors);
     align-items: center;
 }
 
+.bg-disabled {
+    background-color: #9a9a9a;
+}
+
 .bg-image-blurred {
     position: fixed;
 
@@ -98,7 +102,6 @@ $theme-colors: map-merge($theme-colors, $custom-colors);
     border-radius: $border-radius-xxl;
 }
 
-
 .main-page-card {
     @include set-flex-column();
     @include add-margin(0, $spacer, $spacer, $spacer);
@@ -132,4 +135,30 @@ $theme-colors: map-merge($theme-colors, $custom-colors);
 
 .clickable {
     cursor: pointer;
+}
+
+.game-display {
+    @include add-margin($spacer, 0, $spacer, 0);
+
+    border: 5px solid $red-600;
+    border-radius: $border-radius-lg;
+    width: 75%;
+    max-width: 540px;
+    display: grid;
+    grid-template-columns: 30% 75fr;
+}
+
+.game-display-nameid {
+    background: $red-500;
+    border-right: 5px solid $light;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    padding: ($spacer * 0.5);
+}
+
+.game-display-info {
+    padding: ($spacer * 0.25) 0;
+    background-color: $orange-500;
 }
