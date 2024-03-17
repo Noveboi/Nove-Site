@@ -52,20 +52,24 @@ public class GameHubProtocol
 /// </summary>
 public enum Receivers
 {
-	OnBeginGame,
+	OnStartGame,
+	OnBeginSetup,
+	OnFinishSetup,
+	OnRestartGame,
+	OnGameOver,
 	SelfConnected,
 	OtherConnected,
 	OtherDisconnected,
 	GetGameList,
 	UpdateGameList,
+	GetGameInstance,
 }
 
 /// <summary>
 /// "Senders" are methods that are defined on the hub-side.
 /// A message specifying which one of the <see cref="Senders"/>
 /// methods to run is sent from a client and received by the 
-/// <see cref="Hub"/> that client is connected to. Thus the message flow
-/// is [CLIENT --> HUB].
+/// <see cref="Hub"/> that client is connected to. Thus the message flow is [CLIENT --> HUB].
 /// </summary>
 public enum Senders
 {
@@ -76,5 +80,6 @@ public enum Senders
 	OnBrowserClose,
 	SendGameListToClient,
 	ReadyToConnect,
+	FinishSetup,
 	OtherPlayerConnected
 }

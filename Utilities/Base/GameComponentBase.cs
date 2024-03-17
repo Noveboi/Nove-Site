@@ -20,7 +20,7 @@ namespace LearningBlazor.Utilities.Base;
 ///		with <see cref="GameHubBase{TGame, TPlayer}"/> instances as well as providing some basic variables such as <see cref="Base.GameStates"/>
 /// </para>
 /// </summary>
-public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where TPlayer : PlayerModel
+public class GameComponentBase<TGame, TPlayer> : ComponentBase, IAsyncDisposable where TPlayer : PlayerModel where TGame : GameModel<TPlayer>
 {
 	[Inject]
 	private NavigationManager NavManager { get; set; } = default!;
@@ -30,31 +30,44 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	private IServiceProvider ServiceProvider { get; set; } = default!;
 
 	private HubConnection? hubConnection;
-	private List<PlayerModel> playerList = [];
-
+	private TGame _game = null!;
+	
+	/// <summary>
+	/// The protocol contains the most basic methods for Client <--> Hub communication.
+	/// </summary>
 	protected GameHubProtocol Protocol => GameHubProtocol.Singleton;
 
 	/// <summary>
-	/// The GameState helps deriving components dynamically render the proper UI elements based on the state of the game.
+	/// Provides information about the game the user is currently in. This object should NOT be modified by Components (Clients) 
+	/// and should only be touched by the server (Hubs).
 	/// </summary>
-	protected GameStates GameState = GameStates.Waiting;
+	protected TGame Game
+	{
+		get => _game;
+		set
+		{
+			_game = value;
 
-	/// <summary>
-	/// Maintains the other players in the Game the user is in. This list is automatically updated in the <see cref="GameComponentBase{TPlayer}"/> class.
-	/// </summary>
-	protected IReadOnlyList<PlayerModel> GamePlayers => playerList;
+			// Automatically update the TPlayer property if it exists.
+			if (Self is not null)
+			{
+				var updatedPlayer = _game.Players.FirstOrDefault(p => p.Id == Self.Id);
+
+				if (updatedPlayer != default(TPlayer))
+					Self = updatedPlayer;
+			}
+		}
+	}
 
 	/// <summary>
 	/// Provides information about the user such as the Username and the Connection ID
 	/// </summary>
-	protected TPlayer? Self;
+	protected TPlayer Self { get; set; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
 		if (firstRender)
-		{
 			await JS.InvokeVoidAsync("registerListeners", DotNetObjectReference.Create(this));
-		}
     }
 
 	/// <summary>
@@ -74,21 +87,58 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	/// Builds the <see cref="HubConnection"/> and sets up receivers (listeners) using <see cref="HubConnection.On(string, Type[], Func{object?[], object, Task}, object)"/>
 	/// </summary>
 	/// <param name="hubUriName">The registered name of the Hub in the application's services (see <see cref="Program"/>)</param>
-	/// <returns></returns>
+	/// <returns>If the client is connected to the <see cref="Hub"/> </returns>
 	/// <exception cref="Exception"></exception>
 	protected async Task SetUpHubConnection(string hubUriName)
 	{
-		hubConnection = ServiceProvider.GetKeyedService<HubConnection>(hubUriName)
-			?? throw new Exception("Couldn't find hubConnection instance");
+		hubConnection = ServiceProvider.GetKeyedService<HubConnection>(hubUriName);
+
+		if (hubConnection is null)
+		{
+			Log.Error("Couldn't find HubConnection with service key = \"{hubKey}\"", hubUriName);
+			throw new Exception();
+		}
+
+		//	If the HubConnection is not connected, then something is WRONG!
+		//		The HubConnection is started (connection established) in the GameLobby!
+		if (hubConnection.State != HubConnectionState.Connected)
+		{
+			Log.Error("Client redirected to a game component without an active hub connection. (Connection State = {hubState})", hubConnection.State);
+			throw new Exception();
+		}
 
 		// Set up receivers
-		hubConnection.On(Protocol[Receivers.OnBeginGame], OnBeginGame);
+		hubConnection.On(Protocol[Receivers.OnStartGame], OnStartGame);
+		hubConnection.On(Protocol[Receivers.OnRestartGame], OnRestartGame);
+		hubConnection.On(Protocol[Receivers.OnBeginSetup], OnBeginSetup);
+		hubConnection.On<string>(Protocol[Receivers.OnFinishSetup], OnFinishSetup);
+		hubConnection.On<string>(Protocol[Receivers.GetGameInstance], GetGameInstance);
 		hubConnection.On<string>(Protocol[Receivers.OtherConnected], OtherConnected);
 		hubConnection.On<string>(Protocol[Receivers.OtherDisconnected], OtherDisconnected);
 		hubConnection.On<string, string>(Protocol[Receivers.SelfConnected], SelfConnected);
 
 		// Let the hub know!
 		await hubConnection.SendAsync(Protocol[Senders.ReadyToConnect]);
+	}
+
+	protected async Task FinishSetup<T>(T args) 
+	{
+		if (hubConnection is null)
+			return;
+
+		// Serialize class types
+		if (typeof(T).IsClass)
+		{
+			string argsJson = JsonConvert.SerializeObject(args);
+			await hubConnection.SendAsync(Protocol[Senders.FinishSetup], argsJson);
+		}
+
+		// But do not serialize value types (primitives)
+		else
+		{
+			await hubConnection.SendAsync(Protocol[Senders.FinishSetup], args);
+		}
+
 	}
 
 	#region Receiver & Sender Wrappers
@@ -244,9 +294,47 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	/// <summary>
 	/// Sets the <see cref="Base.GameStates"/> to <see cref="GameStates.Playing"/> and forces UI re-render
 	/// </summary>
-	private async Task OnBeginGame()
+	private async Task OnStartGame()
 	{
-		GameState = GameStates.Playing;
+		Log.Information("{Player} received game {Command}", Self.Name, "START");
+		Game.State = GameStates.Playing;
+		await InvokeAsync(StateHasChanged);
+	}
+
+	/// <summary>
+	/// Calls the <see cref="GameModel.Restart"/> method and forces UI re-render
+	/// </summary>
+	/// <returns></returns>
+	protected virtual async Task OnRestartGame()
+	{
+		Log.Information("{Player} received game {Command}", Self.Name, "RESTART");
+		Game.Restart();
+		await InvokeAsync(StateHasChanged);
+	}
+
+	private async Task OnBeginSetup()
+	{
+		Log.Information("Setup view set for {Player}", Self.Name);
+		Game.State = GameStates.Setup;
+
+		await InvokeAsync(StateHasChanged);
+	}
+
+	private async Task OnFinishSetup(string gameJson)
+	{
+		Game = JsonConvert.DeserializeObject<TGame>(gameJson)
+			?? throw new Exception("Deserialized into NULL game instance!");
+
+		Log.Information("{Player} received game and is transitioning from {Setup} to {Playing}", Self.Name, "Setup", "Playing");
+		await InvokeAsync(StateHasChanged);
+	}
+
+	protected virtual async Task GetGameInstance(string gameJson)
+	{
+		Game = JsonConvert.DeserializeObject<TGame>(gameJson)
+			?? throw new Exception("Deserialized into NULL game instance!");
+
+		Log.Information("{Player} got game instance. ({size} bytes)", Self.Name, gameJson.Length);
 		await InvokeAsync(StateHasChanged);
 	}
 
@@ -254,16 +342,20 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	/// This method will fire when ANOTHER player has connected to the <see cref="GameModel"/> that the client is 
 	/// currently in.
 	/// <para>
-	/// IMPORTANT NOTE: This method does NOT send the player object to the <see cref="Hub"/>!
+	/// IMPORTANT NOTE: This method does NOT send the player object to the <see cref="Hub"/>! (Using Senders.OtherPlayerConnected)
 	///		This is because the Hub can infer who the new player is thanks to the <see langword="static"/> "Games" instance
 	/// </para>
 	/// </summary>
 	public virtual async Task OtherConnected(string json)
 	{
-		var player = JsonConvert.DeserializeObject<PlayerModel>(json)
+		var player = JsonConvert.DeserializeObject<TPlayer>(json)
 			?? throw new Exception("Deserialized into NULL obhect when trying to get Player!");
 
-		playerList.Add(player);
+		// Currently only TPlayer is sent to others with the theory that there will be reduced load.
+		// Possibly change to sending the new TGame instance.
+		Game.Players.Add(player);
+
+		Log.Information("{Player} received {MethodName} method", Self.Name, nameof(OtherConnected));
 
 		if (hubConnection is not null)
 			await hubConnection.InvokeAsync(Protocol[Senders.OtherPlayerConnected]);
@@ -277,22 +369,16 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 	/// </summary>
 	/// <param name="playerJson">The <typeparamref name="TPlayer"/> object encoded in JSON</param>
 	/// <param name="gamePlayersJson">The <see cref="List{T}"/> of <see cref="PlayerModel"/> objects encoded in JSON</param>
-	/// <returns></returns>
 	/// <exception cref="Exception"></exception>
-	protected virtual async Task SelfConnected(string playerJson, string gamePlayersJson)
+	protected virtual async Task SelfConnected(string playerId, string gameJson)
 	{
-		var player = JsonConvert.DeserializeObject<TPlayer>(playerJson)
-			?? throw new Exception("Deserialized ino NULL object when trying to get player object!");
+		var game = JsonConvert.DeserializeObject<TGame>(gameJson)
+			?? throw new Exception("Deserialized into NULL object when trying to get game object!");
 
-		// The JSON string here can be empty if the Game the user has joined has 0 players
-		if (gamePlayersJson != string.Empty)
-			playerList = JsonConvert.DeserializeObject<List<PlayerModel>>(gamePlayersJson)
-				?? throw new Exception("Deserialized into NULL object when trying to get player list!");
+		Game = game;
+		Self = Game.Players.First(p => p.Id == playerId);
 
-		Self = player;
-		playerList.Add(Self);
-
-		Log.Information("Player {Name} executed method {Method}", Self.Name, nameof(SelfConnected));
+		Log.Information("Player \"{Name}\" succesfully connected to game \"{Game}\" ", Self.Name, Game.NameId);
 
 		await InvokeAsync(StateHasChanged);
 	}
@@ -313,10 +399,12 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		if (hubConnection is not null)
 			await hubConnection.SendAsync(Protocol[Senders.OtherPlayerDisconnected], playerId);
 
-		var playerToRemove = playerList.FirstOrDefault(p => p.Id == playerId)
+		var playerToRemove = Game.Players.FirstOrDefault(p => p.Id == playerId)
 			?? throw new Exception("Couldn't find player to remove from gamePlayers");
 
-		playerList.Remove(playerToRemove);
+		Game.Players.Remove(playerToRemove);
+
+		Log.Information("{Player} received {MethodName} method", Self.Name, nameof(OtherDisconnected));
 	}
 
 	/// <summary>
@@ -333,10 +421,19 @@ public class GameComponentBase<TPlayer> : ComponentBase, IAsyncDisposable where 
 		Log.Information("{Player} exited by closing tab/browser", playerName);
 	}
 
+	public async Task CancelInitialization()
+	{
+		NavManager.NavigateTo("/applets", true);
+		await DisposeAsync();
+	}
+
 	public async ValueTask DisposeAsync()
 	{
 		if (hubConnection is not null)
 		{
+			if (hubConnection.State != HubConnectionState.Disconnected)
+				await hubConnection.StopAsync();
+
 			await JS.InvokeVoidAsync("unregisterListeners");
 			GC.SuppressFinalize(this);
 		}

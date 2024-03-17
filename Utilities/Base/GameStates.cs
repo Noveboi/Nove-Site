@@ -2,10 +2,9 @@
 {
     public enum GameStates
     {
+        Setup,
         Waiting,
         Playing,
-        Win,
-        Loss,
-        Tie
+        Over
     }
 }

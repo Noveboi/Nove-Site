@@ -17,20 +17,27 @@ namespace LearningBlazor.Utilities.Base;
 /// <typeparamref name="TGame"/> is the type of <see cref="GameModel"/> associated with each class that inherits from <see cref="GameHubBase{T,T}"/>
 /// <typeparamref name="TPlayer"/> is the type of <see cref="PlayerModel"/> associated with each class that inherits from <see cref="GameHubBase{TGame, TPlayer}"/>
 /// </summary>
-public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPlayer : PlayerModel
+public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where TGame : GameModel<TPlayer> where TPlayer : PlayerModel
 {
 	#region Fields
+
 	// HubCallerContext.Items Keys
 	protected enum ItemKeys
 	{
 		Player,
 		Game,
-		UserPlaying,
-		Opponent	// For 2-player games
+		Opponent,	// For 2-player games
+		PlayAgainVotes
 	}
 	
 	#endregion
 	#region Hub Properties
+	/* 
+		The properties 'Game' and 'Player' use the Context.Items collection for their backing fields.
+		This is because the GameHubBase instance could be disposed and reinitialized. 
+		If we were initializing these properties "normally" then they would also be reinitialized in the above case.
+		Storing the states of these objects inside Context.Items avoids this problem!
+	 */
 	public TGame Game
 	{
 		get
@@ -51,19 +58,10 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 		}
 		set => Context.Items[ItemKeys.Player] = value;
 	}
-	protected bool IsUserPlaying
-	{
-		get
-		{
-			object usrPlaying = Context.Items[ItemKeys.UserPlaying] ?? false;
-			return (bool)usrPlaying;
-		}
-		set => Context.Items[ItemKeys.UserPlaying] = value;
-	}
 
-	GameHubProtocol Protocol => GameHubProtocol.Singleton;
+	protected static GameHubProtocol Protocol => GameHubProtocol.Singleton;
 	#endregion
-	#region Server-Only Methods
+	#region Methods
 
 	/// <summary>
 	/// Wrapper method for <see cref="IHubClients.Client(string)"/> SendAsync method. Used in certain scenarios
@@ -72,10 +70,13 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 	///		their own Component.
 	/// </para>
 	/// </summary>
-	private async Task NotifyGamePlayers(string methodName)
+	private async Task NotifyGamePlayers(string methodName, bool exceptSelf = false)
 	{
 		var gamePlayers = Game.Players
 			.Select(p => p.Id);
+
+		if (exceptSelf)
+			gamePlayers = gamePlayers.Except([Context.ConnectionId]);
 
 		await Clients.Clients(gamePlayers).SendAsync(methodName);
 	}
@@ -87,10 +88,13 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 	///		with the passed argument <paramref name="arg1"/> in their own Component.
     /// </para>
     /// </summary>
-    private async Task NotifyGamePlayers(string methodName, object? arg1)
+    private async Task NotifyGamePlayers(string methodName, object? arg1, bool exceptSelf = false)
 	{
 		var gamePlayers = Game.Players
 			.Select(p => p.Id);
+
+		if (exceptSelf)
+			gamePlayers = gamePlayers.Except([Context.ConnectionId]);
 
 		await Clients.Clients(gamePlayers).SendAsync(methodName, arg1);
 	}
@@ -108,12 +112,14 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 	public async Task OnBrowserClose() =>
 		await OnDisconnectedAsync(new Exception("Player disconnected by means of closing browser or tab."));
 
+	// Send to LOBBY
 	public async Task SendGameListToClient(List<TGame> games) 
 	{
 		string json = JsonConvert.SerializeObject(games);
 		await Clients.Caller.SendAsync(Protocol[Receivers.GetGameList], json);
 	}
 
+	// Sent from LOBBY
 	public Task CreatePlayer(Dictionary<string, TPlayer> playerDict, string username)
 	{
 		var player = Activator.CreateInstance(typeof(TPlayer), Context.ConnectionId, username) as TPlayer
@@ -124,13 +130,22 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 		return Task.CompletedTask;
 	}
 
+	/// <summary>
+	/// Sent from <see cref="GameComponentBase{TGame, TPlayer}"/> when the client has finished setting up the HubConnection.
+	/// </summary>
+	/// <returns></returns>
 	public virtual async Task ReadyToConnect()
 	{
-		await NotifyOfClientConnection();
 		Game.Players.Add(Player);
+		await NotifyOfClientConnection();
 
 		var gameJson = JsonConvert.SerializeObject(Game);
 
+		// TODO: Inspect this, this is most likely completely wrong!!!
+		// TODO: Inspect this, this is most likely completely wrong!!!
+		// TODO: Inspect this, this is most likely completely wrong!!!
+		// TODO: Inspect this, this is most likely completely wrong!!!
+		// TODO: Inspect this, this is most likely completely wrong!!!
 		if (Game.Players.Count == 1)
 			await Clients.Others.SendAsync(Protocol[Receivers.UpdateGameList], gameJson);
 	}
@@ -144,21 +159,57 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 		return Task.CompletedTask;
 	}
 
-	public async Task NotifyGameStart() =>
-		await NotifyGamePlayers(Protocol[Receivers.OnBeginGame]);
+	// For now, does not send Game to Clients in order to avoid sending a lot of data. This could be an issue in the future. 
+	public async Task StartGame()
+	{
+		Game.State = GameStates.Playing;
+		await NotifyGamePlayers(Protocol[Receivers.OnStartGame]);
+	}
+
+	// For now, does not send Game to Clients in order to avoid sending a lot of data. This could be an issue in the future. 
+	public async Task RestartGame()
+	{
+		Game.Restart();
+		await NotifyGamePlayers(Protocol[Receivers.OnRestartGame]);
+	}
+
+	public async Task BeginSetup()
+	{
+		Game.State = GameStates.Setup;
+		await NotifyGamePlayers(Protocol[Receivers.OnBeginSetup]);
+	}
+
+	/// <summary>
+	/// Transition the game state from <see cref="GameStates.Setup"/> to <see cref="GameStates.Playing"/> and send the Game object to players
+	/// 
+	/// <para>
+	///		<paramref name="argsJson"/> is an <see cref="object"/> of any <see cref="Type"/> that deriving classes
+	///		can use to do any extra steps (e.g: Set player symbols in TicTacToe)
+	/// </para>
+	/// </summary>
+	public virtual async Task FinishSetup(string argsJson)
+	{
+		Game.State = GameStates.Playing;
+
+		string gameJson = JsonConvert.SerializeObject(Game);
+
+		await NotifyGamePlayers(Protocol[Receivers.OnFinishSetup], gameJson);
+	}
 
     public async Task NotifyOfClientConnection()
 	{
 		string playerJson = JsonConvert.SerializeObject(Player);
-		string gamePlayersJson = Game.Players.Count == 0 ? string.Empty : JsonConvert.SerializeObject(Game.Players);
+		string gameJson = JsonConvert.SerializeObject(Game);
 
-		await Clients.Caller.SendAsync(Protocol[Receivers.SelfConnected], playerJson, gamePlayersJson);
-		await NotifyGamePlayers(Protocol[Receivers.OtherConnected], playerJson);
+		await Clients.Caller.SendAsync(Protocol[Receivers.SelfConnected], Player.Id, gameJson);
+		await NotifyGamePlayers(Protocol[Receivers.OtherConnected], playerJson, exceptSelf: true);
 	}
 
 	public virtual Task OtherPlayerConnected() 
 		=> Task.CompletedTask;
 
+
+	// Sent from LOBBY
 	public Task CreateNewGame(List<TGame> games)
 	{
 		var game = Activator.CreateInstance(typeof(TGame)) as TGame
@@ -166,17 +217,17 @@ public class GameHubBase<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> whe
 		games.Add(game);
 		Game = game;
 
-		string gameJson = JsonConvert.SerializeObject(Game);
-		string playerJson = JsonConvert.SerializeObject(Player);
-
 		return Task.CompletedTask;
+	}
+
+	public async Task SendGameToPlayers()
+	{
+		string gameJson = JsonConvert.SerializeObject(Game);
+		await NotifyGamePlayers(Protocol[Receivers.GetGameInstance], gameJson);
 	}
 
 	public Task OtherPlayerDisconnected(Dictionary<string, TPlayer> playerDict, string connectionId)
 	{
-		var player = playerDict[connectionId];
-		Game.Players.Remove(player);
-
 		return Task.CompletedTask;
 	}
 	#endregion

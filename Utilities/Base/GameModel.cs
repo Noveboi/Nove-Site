@@ -1,24 +1,13 @@
 ﻿namespace LearningBlazor.Utilities.Base;
 
 [Serializable]
-public class GameModel
+public class GameModel<TPlayer>
 {
-    public GameModel()
+	#region Constructors
+	public GameModel()
     {
         NameId = GetHashCode().ToString();
         Players = [];
-    }
-
-    public GameModel(PlayerModel player1)
-    {
-        NameId = GetHashCode().ToString();
-        Players = [player1];
-    }
-
-    public GameModel(PlayerModel player1, PlayerModel player2)
-    {
-        NameId = GetHashCode().ToString();
-        Players = [player1, player2];
     }
 
     public GameModel(string name)
@@ -27,23 +16,31 @@ public class GameModel
         Players = [];
     }
 
-    public GameModel(string name, PlayerModel player1)
+    public GameModel(IEnumerable<TPlayer> playerCollection)
     {
-        NameId = name;
-        Players = [player1];
+        NameId = GetHashCode().ToString();
+        Players = playerCollection.ToList();
     }
 
-    public GameModel(string name, PlayerModel player1, PlayerModel player2)
+    public GameModel(string name, IEnumerable<TPlayer> playerCollection)
     {
         NameId = name;
-        Players = [player1, player2];
+        Players = playerCollection.ToList();
     }
+	#endregion
+    /// <summary>
+    /// Unique identifier for each instance.
+    /// </summary>
+	public string NameId { get; set; }
 
-    public virtual int PlayerCapacity { get; set; }
-    public string NameId { get; set; }
+    public GameStates State { get; set; } = GameStates.Waiting;
 
-    public List<PlayerModel> Players { get; set; }
+    public List<TPlayer> Players { get; set; }
+	public virtual int PlayerCapacity { get; set; }
 
-    public override string ToString() => 
+    public virtual void Restart() => 
+        State = GameStates.Playing;
+
+	public override string ToString() => 
         $"\"{NameId}\" ({Players.Count} / {PlayerCapacity} Players)";
 }

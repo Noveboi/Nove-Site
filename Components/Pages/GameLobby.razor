@@ -27,7 +27,7 @@
 	[Parameter]
 	public string GameTypeString { get; set; } = string.Empty;
 
-	List<GameModel>? games;
+	List<GameModel<PlayerModel>>? games;
 	GameHubProtocol Protocol => GameHubProtocol.Singleton;
 
 	HubConnection? hubConnection;
@@ -42,12 +42,12 @@
 
 			hubConnection.On<string>(Protocol[Receivers.GetGameList], async (gamesJson) =>
 			{
-				games = JsonConvert.DeserializeObject<List<GameModel>>(gamesJson);
+				games = JsonConvert.DeserializeObject<List<GameModel<PlayerModel>>>(gamesJson);
 				await InvokeAsync(StateHasChanged);
 			});
 			hubConnection.On<string>(Protocol[Receivers.UpdateGameList], async (gameJson) =>
 			{
-				var game = JsonConvert.DeserializeObject<GameModel>(gameJson)
+				var game = JsonConvert.DeserializeObject<GameModel<PlayerModel>>(gameJson)
 					?? throw new Exception("Deserialized into NULL game model!");
 				games?.Add(game);
 				await InvokeAsync(StateHasChanged);
@@ -67,12 +67,12 @@
 		}
 	}
 
-	async void GameClicked(GameModel game)
+	async void GameClicked(GameModel<PlayerModel> game)
 	{
-		NavManager.NavigateTo($"applets/{GameTypeString}");
-
 		if (hubConnection is not null)
 			await hubConnection.SendAsync(Protocol[Senders.ClientJoinGame], game.NameId);
+
+		NavManager.NavigateTo($"applets/{GameTypeString}");
 	}
 
 	async Task CreateGame()

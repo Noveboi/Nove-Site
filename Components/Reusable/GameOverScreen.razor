@@ -1,0 +1,63 @@
+﻿@rendermode InteractiveServer
+
+@if (State == GameOverStates.Win)
+{
+	<p class="text-light display-4">You Win!</p>
+
+}
+else if (State == GameOverStates.Tie)
+{
+	<p class="text-light display-4">It's a Tie!</p>
+
+}
+else if (State == GameOverStates.Lose)
+{
+	<p class="text-light display-4">You Lose!</p>
+
+}
+
+@if (Voted == false)
+{
+	<button class="btn bg-primary" @onclick="VotePlayAgain"> Play Again </button>
+}
+else
+{
+	<h2>Waiting for opponent to decide...</h2>
+}
+<button class="btn bg-primary" @onclick="async () => await OnExit.InvokeAsync()"> Exit Game </button>
+
+@code {
+
+	// TODO: Make dynamic change when player has voted.
+	// TODO 2: Reset Voted variable when game is restarted
+
+	// TODO: Make dynamic change when player has voted.
+	// TODO 2: Reset Voted variable when game is restarted
+
+	// TODO: Make dynamic change when player has voted.
+	// TODO 2: Reset Voted variable when game is restarted
+
+	// TODO: Make dynamic change when player has voted.
+	// TODO 2: Reset Voted variable when game is restarted
+
+	[Parameter]
+	public GameOverStates State { get; set; }
+	[Parameter]
+	public EventCallback OnVoteForPlayAgain { get; set; }
+	[Parameter]
+	public EventCallback OnExit { get; set; }
+
+	[Parameter]
+	public bool Voted { get; set; }
+	[Parameter]
+	public EventCallback<bool> VotedChanged { get; set; }
+
+	async Task VotePlayAgain()
+	{
+		Voted = true;
+		await VotedChanged.InvokeAsync();
+		await OnVoteForPlayAgain.InvokeAsync();
+
+		await InvokeAsync(StateHasChanged);
+	}
+}

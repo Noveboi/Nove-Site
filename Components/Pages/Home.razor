@@ -1,8 +1,9 @@
 ﻿@page "/"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+
 @inject NavigationManager NavManager
-@inject UserService userService
+@inject UserService UserService
 
 <PageTitle>Home</PageTitle>
 
@@ -10,7 +11,7 @@
 <div class="d-flex flex-column align-items-center h-75 z-1">
 
 	@* Show the "Enter Username" form if a username for the user doesn't exist *@
-	@if (userService.UsernameExists == false)
+	@if (UserService.UsernameExists == false)
 	{
 		<h1 class="title-header title-header-opaque">Welcome!</h1>
 		<div class="opaque-box">
@@ -47,6 +48,6 @@
 			return;
 		}
 
-		await userService.SetUsernameAsync(username);
+		await UserService.SetUsernameAsync(username);
 	}
 }

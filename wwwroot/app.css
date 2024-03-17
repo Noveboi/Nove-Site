@@ -12040,3 +12040,40 @@ textarea.form-control-lg {
   padding: 0.25rem 0;
   background-color: #fd7e14;
 }
+
+.board {
+  display: grid;
+  grid-template-rows: repeat(3, auto);
+  grid-template-columns: repeat(3, auto);
+  gap: 4px;
+}
+
+.board-cell {
+  min-height: 20px;
+  min-width: 20px;
+  height: 25vw;
+  width: 25vw;
+  max-height: 100px;
+  max-width: 100px;
+  font-size: 2rem;
+  border: 2px solid #c424e4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: lighter;
+}
+
+.cell-clickable {
+  cursor: pointer;
+  background-color: purple;
+  transition: background-color ease-out 0.2s;
+}
+
+.cell-clickable:hover {
+  background-color: mediumpurple;
+}
+
+.cell-not-clickable {
+  cursor: not-allowed;
+  background-color: darkgrey;
+}

@@ -4,7 +4,7 @@ namespace LearningBlazor.Utilities.Base;
 /// <summary>
 /// Implemented by all hubs that inherit from <see cref="GameHubBase{T,T}"/>
 /// </summary>
-public interface IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPlayer : PlayerModel
+public interface IGameHubBase<TGame, TPlayer> where TGame : GameModel<TPlayer> where TPlayer : PlayerModel
 {
 	/// <summary>
 	/// The instance of the match the <typeparamref name="TPlayer"/> is currently in.
@@ -16,7 +16,7 @@ public interface IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPla
 	TPlayer Player { get; set; }
 
 	/// <summary>
-	/// [CLIENT --> HUB] Client orders the <see cref="GameHubBase{T,T}"/> to create a new game in the <see cref="GameModel"/> list 
+	/// [LOBBY --> HUB] Client orders the <see cref="GameHubBase{T,T}"/> to create a new game in the <see cref="GameModel"/> list 
 	/// and notify all other <see cref="GameHub{T}"/> clients. Furthermore, the 'Game' value is set in the <see cref="HubCallerContext.Items"/>
 	/// storage
 	/// </summary>
@@ -27,7 +27,7 @@ public interface IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPla
 	Task CreateNewGame(List<TGame> gameList);
 
 	/// <summary>
-	/// [CLIENT --> HUB] The <see cref="GameHubBase{T,T}"/> adds a new instance of a <typeparamref name="TPlayer"/> with Name = <paramref name="username"/>
+	/// [LOBBY --> HUB] The <see cref="GameHubBase{T,T}"/> adds a new instance of a <typeparamref name="TPlayer"/> with Name = <paramref name="username"/>
 	/// to the <paramref name="playerDict"/>
 	/// </summary>
 	/// <param name="username">The name of the player that is displayed instead on the Connection ID</param>
@@ -35,8 +35,8 @@ public interface IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPla
 	///		The STATIC dictionary in an implementation of <see cref="IGameHub{TGame, TPlayer}"/> 
 	///		containing all the <typeparamref name="TPlayer"/> instances in that Hub
 	///	</param>
-	/// <returns></returns>
 	Task CreatePlayer(Dictionary<string, TPlayer> playerDict, string username);
+
 
 	/// <summary>
 	/// [CLIENT --> HUB] Called when someone else disconnects from the same game as the <see cref="GameHubBase{T, T}"/> client
@@ -53,27 +53,35 @@ public interface IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPla
 	///		The STATIC list in an implementation of <see cref="IGameHub{TGame, TPlayer}"/> 
 	///		containing all the <typeparamref name="TGame"/> instances in that Hub
 	/// </param>
-	/// <returns></returns>
 	Task ClientJoinGame(List<TGame> gameList, string gameNameId);
 
 	/// <summary>
 	/// Detect tab/browser close through JavaScript and propagate the event to this method to force the 
 	/// <see cref="Hub.OnDisconnectedAsync(Exception?)"/> method
 	/// </summary>
-	/// <returns></returns>
 	Task OnBrowserClose();
 
 	/// <summary>
 	/// [HUB --> CLIENT] Send the Games list to the caller as a JSON string
 	/// </summary>
-	/// <returns></returns>
 	Task SendGameListToClient(List<TGame> games);
 	/// <summary>
-	/// [HUB --> CLIENT] Broadcasts message to ALL clients in <see cref="Game"/> indicating they should set their 
-	/// gameState to <see cref="GameStates.Playing"/>
+	/// [HUB --> CLIENT] Set the game state to <see cref="GameStates.Playing"/> and broadcast to clients that
+	/// they should do the same.
+	/// </summary>
+	Task StartGame();
+
+	/// <summary>
+	/// [HUB --> CLIENT] Calls <see cref="GameModel.Restart"/> and broadcasts that clients should do the same.
 	/// </summary>
 	/// <returns></returns>
-	Task NotifyGameStart();
+	Task RestartGame();
+	Task BeginSetup();
+
+	/// <summary>
+	/// [HUB --> CLIENTS] Broadcasts the <typeparamref name="TGame"/> instance to ALL game players.
+	/// </summary>
+	Task SendGameToPlayers();
 
 	/// <summary>
 	/// Broadcasts the following messages:

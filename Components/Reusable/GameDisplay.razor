@@ -23,10 +23,10 @@
 
 @code {
 	[Parameter]
-	public GameModel Game { get; set; } = default!;
+	public GameModel<PlayerModel> Game { get; set; } = default!;
 
 	[Parameter]
-	public EventCallback<GameModel> OnGameClicked { get; set; }
+	public EventCallback<GameModel<PlayerModel>> OnGameClicked { get; set; }
 
 	bool fullGame = false;
 

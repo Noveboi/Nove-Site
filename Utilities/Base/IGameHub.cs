@@ -3,7 +3,7 @@
 	/// <summary>
 	/// Interface for hubs that inherit from GameHubBase
 	/// </summary>
-	public interface IGameHub<TGame, TPlayer> : IGameHubBase<TGame, TPlayer> where TGame : GameModel where TPlayer : PlayerModel
+	public interface IGameHub<TGame, TPlayer> : IGameHubBase<TGame, TPlayer> where TGame : GameModel<TPlayer> where TPlayer : PlayerModel
 	{
 		/// <summary>
 		/// Exposed method to client. For proper functionality you must call the 
@@ -29,5 +29,10 @@
 		/// Feel free to add any extra processing steps into this method
 		/// </summary>
 		Task ExposedClientJoinGame(string gameNameId);
+
+		/// <summary>
+		/// [CLIENT --> HUB] Players can vote to start a new game. This will happen if ALL players vote to play again.
+		/// </summary>
+		Task VoteToPlayAgain();
 	}
 }
