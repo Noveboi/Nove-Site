@@ -1,0 +1,33 @@
+﻿@using Games.TicTacToe
+
+<div class="board">
+	@for (int i = 0; i < 3; i++)
+	{
+		@for (int j = 0; j < 3; j++)
+		{
+			var row = i;
+			var col = j;
+			<TicTacToeCell Content="@Board[row,col]" 
+					OnClick="() => HandleCellClick(row, col)" 
+					IsClickable="IsPlayerTurn"/>
+		}
+	}
+</div>
+
+@code {
+	[Parameter]
+	public EventCallback<(int, int)> OnCellClick { get; set; }
+
+	[Parameter]
+	public TicTacToeBoardModel Board { get; set; } = null!;
+	[Parameter]
+	public bool IsPlayerTurn { get; set; }
+
+	protected override async Task OnParametersSetAsync()
+	{
+		await InvokeAsync(StateHasChanged);
+	}
+
+	async Task HandleCellClick(int i, int j) 
+	=> await OnCellClick.InvokeAsync((i, j));
+}

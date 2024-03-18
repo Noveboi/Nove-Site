@@ -1,0 +1,119 @@
+﻿@page "/applets/tictactoe" 
+@rendermode InteractiveServer
+@attribute [Game("Tic-Tac-Toe", "Simple Tic-Tac-Toe game!", typeof(TicTacToe))]
+@inherits GameComponent<Games.TicTacToe.TicTacToeGame, Games.TicTacToe.TicTacToePlayer>
+
+@using Microsoft.AspNetCore.SignalR.Client
+
+<PageTitle>Tic-Tac-Toe</PageTitle>
+
+<div class="d-flex align-items-center flex-column justify-content-center">
+	@if (Game is not null && Game.State == GameStates.Playing)
+	{
+		<TicTacToeBoard OnCellClick="HandleCellClickAndSend" Board="Game.Board" IsPlayerTurn="Self.HasTurn" />
+
+		@* TODO: Add component for scoreboard/player board*@
+		@* TODO: Add component for scoreboard/player board*@
+		<div class="container p-2 flex align-self-center"> 
+			<div class="row">
+				<div class="col">
+					<p class="fw-bold display-6"
+						style="@(Self.HasTurn ? "color: #cf2244" : "color: #eeeeee")">
+							@Self!.Name
+					</p>
+				</div>
+				<div class="col">
+					<p class="fw-bold display-6"
+					   style="@(Self.HasTurn == false ? "color: #cf2244" : "color: #eeeeee")">
+							@opponentName
+						</p>
+				</div>
+			</div>
+		</div>
+	}
+	else if (Game is null)
+	{
+		<h1>Please wait, connecting...</h1>
+	}
+	else if (Game.State == GameStates.Setup)
+	{
+		<h1>Choose a symbol:</h1>
+		<div class="d-flex flex-row">
+			<TicTacToeCell Content="X" OnClick="@(async () => await FinishSetup("X"))"/>
+			<TicTacToeCell Content="O" OnClick="@(async () => await FinishSetup("O"))" />
+		</div>
+	}
+	else if (Game.State == GameStates.Waiting)
+	{
+		@* TODO: Add component for waiting screen *@
+		<h2>Waiting for another player to join...</h2>
+	}
+	else if (Game.State == GameStates.Over)
+	{
+		<GameOverScreen State="Self.GameOverState" OnVoteForPlayAgain="VoteToPlayAgain" OnExit="HandleExit" @bind-Voted="votedPlayAgain" />
+	}
+</div>
+
+@code {
+	string opponentName = string.Empty;
+	bool votedPlayAgain = false;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			try
+			{
+				await SetUpHubConnection("tictactoehub");
+			}
+			catch (Exception)
+			{
+				await CancelInitialization();
+			}
+		}
+	}
+
+	protected override async Task OtherDisconnected(string playerName)
+	{
+		await base.OtherDisconnected(playerName);
+
+		Game.State = GameStates.Waiting;
+		Game.Board.Reset();
+
+		// Reset this variable in the case where the other player disconnects in the GameStates.Over state.
+		votedPlayAgain = false;
+		await InvokeAsync(StateHasChanged);
+	}
+
+	public override async Task OtherConnected(string json)
+	{
+		await base.OtherConnected(json);
+		opponentName = Game.Players[1].Name;
+
+		await InvokeAsync(StateHasChanged);
+	}
+
+	protected override async Task SelfConnected(string playerJson, string gamePlayersJson)
+	{
+		await base.SelfConnected(playerJson, gamePlayersJson);
+
+		if (Game.Players.Count == 2)
+			opponentName = Game.Players[0].Name;
+	}
+
+	protected override async Task OnRestartGame()
+	{
+		votedPlayAgain = false;
+		await base.OnRestartGame();
+	}
+
+	async Task VoteToPlayAgain()
+	{
+		await SendToHub();
+		await InvokeAsync(StateHasChanged);
+	}
+
+	async Task HandleCellClickAndSend((int, int) pos) =>
+		await SendToHub(pos.Item1, pos.Item2, "GetMarkDataFromClient");
+
+}
