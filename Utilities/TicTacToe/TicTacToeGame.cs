@@ -24,9 +24,9 @@ public class TicTacToeGame : GameModel<TicTacToePlayer>
 	/// </summary>
 	public void NextTurn()
 	{
-		bool player1Turn = Players[0].IsTurn;
-		Players[0].IsTurn = !player1Turn;
-		Players[1].IsTurn = player1Turn;
+		bool player1Turn = Players[0].HasTurn;
+		Players[0].HasTurn = !player1Turn;
+		Players[1].HasTurn = player1Turn;
 	}
 
 	public bool IsTieState()

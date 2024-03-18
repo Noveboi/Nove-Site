@@ -10,7 +10,7 @@
 <div class="d-flex align-items-center flex-column justify-content-center">
 	@if (Game is not null && Game.State == GameStates.Playing)
 	{
-		<TicTacToeBoard OnCellClick="HandleCellClickAndSend" Board="Game.Board" IsPlayerTurn="Self.IsTurn"/>
+		<TicTacToeBoard OnCellClick="HandleCellClickAndSend" Board="Game.Board" IsPlayerTurn="Self.HasTurn" />
 
 		@* TODO: Add component for scoreboard/player board*@
 		@* TODO: Add component for scoreboard/player board*@
@@ -18,13 +18,13 @@
 			<div class="row">
 				<div class="col">
 					<p class="fw-bold display-6"
-						style="@(Self.IsTurn ? "color: #cf2244" : "color: #eeeeee")">
+						style="@(Self.HasTurn ? "color: #cf2244" : "color: #eeeeee")">
 							@Self!.Name
 					</p>
 				</div>
 				<div class="col">
 					<p class="fw-bold display-6"
-					   style="@(Self.IsTurn == false ? "color: #cf2244" : "color: #eeeeee")">
+					   style="@(Self.HasTurn == false ? "color: #cf2244" : "color: #eeeeee")">
 							@opponentName
 						</p>
 				</div>

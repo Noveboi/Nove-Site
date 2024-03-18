@@ -54,7 +54,7 @@ public class GameComponent<TGame, TPlayer> : ComponentBase, IAsyncDisposable whe
             // Automatically update the TPlayer property if it exists.
             if (Self is not null)
             {
-                var updatedPlayer = _game.Players.FirstOrDefault(p => p.Id == Self.Id);
+                var updatedPlayer = _game.Players.FirstOrDefault(p => p.ConnectionId == Self.ConnectionId);
 
                 if (updatedPlayer != default(TPlayer))
                     Self = updatedPlayer;
@@ -379,7 +379,7 @@ public class GameComponent<TGame, TPlayer> : ComponentBase, IAsyncDisposable whe
             ?? throw new Exception("Deserialized into NULL object when trying to get game object!");
 
         Game = game;
-        Self = Game.Players.First(p => p.Id == playerId);
+        Self = Game.Players.First(p => p.ConnectionId == playerId);
 
         Log.Information("Player \"{Name}\" succesfully connected to game \"{Game}\" ", Self.Name, Game.NameId);
 
@@ -402,7 +402,7 @@ public class GameComponent<TGame, TPlayer> : ComponentBase, IAsyncDisposable whe
         if (hubConnection is not null)
             await hubConnection.SendAsync(Protocol[Senders.OtherPlayerDisconnected], playerId);
 
-        var playerToRemove = Game.Players.FirstOrDefault(p => p.Id == playerId)
+        var playerToRemove = Game.Players.FirstOrDefault(p => p.ConnectionId == playerId)
             ?? throw new Exception("Couldn't find player to remove from gamePlayers");
 
         Game.Players.Remove(playerToRemove);

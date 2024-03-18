@@ -4,8 +4,11 @@ using Newtonsoft.Json;
 namespace LearningBlazor.Utilities.TicTacToe;
 public class TicTacToePlayer : PlayerModel
 {
-	public TicTacToePlayer(string connectionId, string username) : base(connectionId, username) { }
+	public TicTacToePlayer(string connectionId, string username, TicTacToePlayerStats stats) : base(connectionId, username, stats) 
+	{
+		Stats = stats;
+	}
 
 	public string Symbol { get; set; } = string.Empty;
-    public bool HasRequestedPlayAgain { get; set; } = false;
+	public new TicTacToePlayerStats Stats { get; set; }
 }

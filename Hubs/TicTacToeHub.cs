@@ -1,5 +1,6 @@
 ﻿using LearningBlazor.Utilities.Base;
 using LearningBlazor.Utilities.Base.Hubs;
+using LearningBlazor.Utilities.Services;
 using LearningBlazor.Utilities.TicTacToe;
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
@@ -53,6 +54,27 @@ public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IGameHub<Ti
 		// Swap player turns
 		Game.NextTurn();
 
+
+		// TODO: Update Player Stats
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
+		// TODO 2: MAKE BASE GAME HAVE IsWinStateFor and IsTieState Method!!!!!!
 		// Check for game over conditions
 		if (Game.IsWinStateFor(Player))
 		{
@@ -62,9 +84,7 @@ public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IGameHub<Ti
 
 			// Update player objects
 			selfPlayer.GameOverState = GameOverStates.Win;
-			selfPlayer.Stats.Wins += 1;
 			opponentPlayer.GameOverState = GameOverStates.Lose;
-			opponentPlayer.Stats.Losses += 1;
 
 			Game.State = GameStates.Over;
 		}
@@ -74,9 +94,7 @@ public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IGameHub<Ti
 			var opponentPlayer = _players[OpponentId];
 
 			selfPlayer.GameOverState = GameOverStates.Tie;
-			selfPlayer.Stats.Ties += 1;
 			opponentPlayer.GameOverState = GameOverStates.Tie;
-			opponentPlayer.Stats.Ties += 1;
 
 			Game.State = GameStates.Over;
 		}
@@ -92,7 +110,7 @@ public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IGameHub<Ti
 		
 		if (Game.Players.Count == 2)
 		{
-			OpponentId = Game.Players[0].Id;
+			OpponentId = Game.Players[0].ConnectionId;
 
 			await BeginSetup();
 		}
@@ -109,16 +127,16 @@ public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IGameHub<Ti
 		Log.Information("{Player} is assigned the symbol: {Symbol}", _players[OpponentId].Name, opponentSymbol);
 
 		if (Player.Symbol == "X" && _xGoesFirst || Player.Symbol == "O" && _xGoesFirst == false)
-			Player.IsTurn = true;
+			Player.HasTurn = true;
 		else
-			_players[OpponentId].IsTurn = true;
+			_players[OpponentId].HasTurn = true;
 
 		await base.FinishSetup(arg);
 	}
 
 	public override Task OtherPlayerConnected()
 	{
-		OpponentId = Game.Players[1].Id;
+		OpponentId = Game.Players[1].ConnectionId;
 		return base.OtherPlayerConnected();
 	}
 

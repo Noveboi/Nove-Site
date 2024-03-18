@@ -1,6 +1,7 @@
 ﻿using LearningBlazor.Utilities.Base.Components;
 using LearningBlazor.Utilities.Base.Game;
 using LearningBlazor.Utilities.Base.Player;
+using LearningBlazor.Utilities.TicTacToe;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
@@ -76,7 +77,7 @@ public class GameHub<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where T
     private async Task NotifyGamePlayers(string methodName, bool exceptSelf = false)
     {
         var gamePlayers = Game.Players
-            .Select(p => p.Id);
+            .Select(p => p.ConnectionId);
 
         if (exceptSelf)
             gamePlayers = gamePlayers.Except([Context.ConnectionId]);
@@ -94,7 +95,7 @@ public class GameHub<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where T
     private async Task NotifyGamePlayers(string methodName, object? arg1, bool exceptSelf = false)
     {
         var gamePlayers = Game.Players
-            .Select(p => p.Id);
+            .Select(p => p.ConnectionId);
 
         if (exceptSelf)
             gamePlayers = gamePlayers.Except([Context.ConnectionId]);
@@ -108,7 +109,7 @@ public class GameHub<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where T
     {
         Game.Players.Remove(Player);
 
-        await NotifyGamePlayers(Protocol[Receivers.OtherDisconnected], Player.Id);
+        await NotifyGamePlayers(Protocol[Receivers.OtherDisconnected], Player.ConnectionId);
         await base.OnDisconnectedAsync(exception);
     }
 
@@ -125,8 +126,7 @@ public class GameHub<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where T
     // Sent from LOBBY
     public Task CreatePlayer(Dictionary<string, TPlayer> playerDict, string username)
     {
-        var player = Activator.CreateInstance(typeof(TPlayer), Context.ConnectionId, username) as TPlayer
-            ?? throw new Exception($"Couldn't instantiate player of type {nameof(TPlayer)}");
+        var player = PlayerFactory.CreatePlayer<TPlayer>(Context.ConnectionId, username);
         playerDict[Context.ConnectionId] = player;
         Player = player;
 
@@ -204,7 +204,7 @@ public class GameHub<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where T
         string playerJson = JsonConvert.SerializeObject(Player);
         string gameJson = JsonConvert.SerializeObject(Game);
 
-        await Clients.Caller.SendAsync(Protocol[Receivers.SelfConnected], Player.Id, gameJson);
+        await Clients.Caller.SendAsync(Protocol[Receivers.SelfConnected], Player.ConnectionId, gameJson);
         await NotifyGamePlayers(Protocol[Receivers.OtherConnected], playerJson, exceptSelf: true);
     }
 
