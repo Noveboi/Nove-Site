@@ -1,7 +1,7 @@
 ﻿@page "/applets/tictactoe" 
 @rendermode InteractiveServer
 @attribute [Game("Tic-Tac-Toe", "Simple Tic-Tac-Toe game!", typeof(TicTacToe))]
-@inherits GameComponentBase<Utilities.TicTacToe.TicTacToeGame, Utilities.TicTacToe.TicTacToePlayer>
+@inherits GameComponent<Utilities.TicTacToe.TicTacToeGame, Utilities.TicTacToe.TicTacToePlayer>
 
 @using Microsoft.AspNetCore.SignalR.Client
 

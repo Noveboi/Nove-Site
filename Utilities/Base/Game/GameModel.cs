@@ -1,10 +1,12 @@
-﻿namespace LearningBlazor.Utilities.Base;
+﻿using LearningBlazor.Utilities.Base.Player;
+
+namespace LearningBlazor.Utilities.Base.Game;
 
 [Serializable]
-public class GameModel<TPlayer>
+public class GameModel<TPlayer> where TPlayer : PlayerModel
 {
-	#region Constructors
-	public GameModel()
+    #region Constructors
+    public GameModel()
     {
         NameId = GetHashCode().ToString();
         Players = [];
@@ -27,20 +29,20 @@ public class GameModel<TPlayer>
         NameId = name;
         Players = playerCollection.ToList();
     }
-	#endregion
+    #endregion
     /// <summary>
     /// Unique identifier for each instance.
     /// </summary>
-	public string NameId { get; set; }
+    public string NameId { get; set; }
 
     public GameStates State { get; set; } = GameStates.Waiting;
 
     public List<TPlayer> Players { get; set; }
-	public virtual int PlayerCapacity { get; set; }
+    public virtual int PlayerCapacity { get; set; }
 
-    public virtual void Restart() => 
+    public virtual void Restart() =>
         State = GameStates.Playing;
 
-	public override string ToString() => 
+    public override string ToString() =>
         $"\"{NameId}\" ({Players.Count} / {PlayerCapacity} Players)";
 }

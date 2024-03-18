@@ -1,4 +1,4 @@
-﻿namespace LearningBlazor.Utilities.Base;
+﻿namespace LearningBlazor.Utilities.Base.Player;
 
 [Serializable]
 public class PlayerModel(string connectionId, string username)
@@ -16,7 +16,11 @@ public class PlayerModel(string connectionId, string username)
     /// <summary>
     /// Stores basic game statistics regarding the number of wins, losses, etc...
     /// </summary>
-    public GameStatsModel Stats { get; set; } = new();
+    // TODO: Remove dependency 
+    // TODO: Remove dependency 
+    // TODO: Remove dependency 
+    // TODO: Remove dependency 
+    public PlayerStats Stats { get; set; } = new();
     public GameOverStates GameOverState { get; set; } = GameOverStates.NotOver;
 
     public bool IsTurn { get; set; }

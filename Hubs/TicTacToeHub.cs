@@ -1,11 +1,12 @@
 ﻿using LearningBlazor.Utilities.Base;
+using LearningBlazor.Utilities.Base.Hubs;
 using LearningBlazor.Utilities.TicTacToe;
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
 using Serilog;
 
 namespace LearningBlazor.Hubs;
-public class TicTacToeHub : GameHubBase<TicTacToeGame, TicTacToePlayer>, IGameHub<TicTacToeGame, TicTacToePlayer>
+public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IGameHub<TicTacToeGame, TicTacToePlayer>
 {
 	private static readonly List<TicTacToeGame> _games = [];
 	private static readonly Dictionary<string, TicTacToePlayer> _players = [];

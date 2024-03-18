@@ -1,4 +1,4 @@
-﻿using LearningBlazor.Utilities.Base;
+﻿using LearningBlazor.Utilities.Base.Game;
 using Newtonsoft.Json;
 
 namespace LearningBlazor.Utilities.TicTacToe;
