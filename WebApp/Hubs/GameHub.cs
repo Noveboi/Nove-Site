@@ -1,11 +1,12 @@
 ﻿using WebApp.Components;
-using Games.Base.Game;
+using Games.Base.GameModel;
 using Games.Base.Player;
 using Games.TicTacToe;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
 using Games.Base;
+using Games.Base.PlayerModel;
 
 namespace WebApp.Hubs;
 
@@ -19,10 +20,10 @@ namespace WebApp.Hubs;
 ///		<item> Creating a new <typeparamref name="TGame"/> if a client requests it </item>
 ///		<item> </item>
 /// </list>
-/// <typeparamref name="TGame"/> is the type of <see cref="GameModel"/> associated with each class that inherits from <see cref="GameHub{T,T}"/>
-/// <typeparamref name="TPlayer"/> is the type of <see cref="PlayerModel"/> associated with each class that inherits from <see cref="GameHub{TGame, TPlayer}"/>
+/// <typeparamref name="TGame"/> is the type of <see cref="GameBase"/> associated with each class that inherits from <see cref="GameHub{T,T}"/>
+/// <typeparamref name="TPlayer"/> is the type of <see cref="Games.Base.Player.PlayerModel"/> associated with each class that inherits from <see cref="GameHub{TGame, TPlayer}"/>
 /// </summary>
-public class GameHub<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where TGame : GameModel<TPlayer> where TPlayer : PlayerModel
+public class GameHub<TGame> : Hub, IGameHubBase<TGame, TPlayer> where TGame : GameBase
 {
     #region Fields
 
@@ -38,7 +39,7 @@ public class GameHub<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where T
     #endregion
     #region Hub Properties
     /* 
-		The properties 'Game' and 'Player' use the Context.Items collection for their backing fields.
+		The properties 'GameBase' and 'Player' use the Context.Items collection for their backing fields.
 		This is because the GameHub instance could be disposed and reinitialized. 
 		If we were initializing these properties "normally" then they would also be reinitialized in the above case.
 		Storing the states of these objects inside Context.Items avoids this problem!
@@ -67,11 +68,10 @@ public class GameHub<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where T
     protected static GameHubProtocol Protocol => GameHubProtocol.Singleton;
     #endregion
     #region Methods
-
     /// <summary>
     /// Wrapper method for <see cref="IHubClients.Client(string)"/> SendAsync method. Used in certain scenarios
     ///	<para>
-    ///		This method broadcasts to all <see cref="GameModel.Players"/> clients to call the <paramref name="methodName"/> method in
+    ///		This method broadcasts to all <see cref="GameBase.Players"/> clients to call the <paramref name="methodName"/> method in
     ///		their own Component.
     /// </para>
     /// </summary>
@@ -89,7 +89,7 @@ public class GameHub<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where T
     /// <summary>
     /// Wrapper method for <see cref="IHubClients.Client(string)"/> SendAsync method. Used in certain scenarios
     ///	<para>
-    ///		This method broadcasts to all <see cref="GameModel.Players"/> clients to call the <paramref name="methodName"/> method 
+    ///		This method broadcasts to all <see cref="GameBase.Players"/> clients to call the <paramref name="methodName"/> method 
 	///		with the passed argument <paramref name="arg1"/> in their own Component.
     /// </para>
     /// </summary>
@@ -163,14 +163,14 @@ public class GameHub<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where T
         return Task.CompletedTask;
     }
 
-    // For now, does not send Game to Clients in order to avoid sending a lot of data. This could be an issue in the future. 
+    // For now, does not send GameBase to Clients in order to avoid sending a lot of data. This could be an issue in the future. 
     public async Task StartGame()
     {
         Game.State = GameStates.Playing;
         await NotifyGamePlayers(Protocol[Receivers.OnStartGame]);
     }
 
-    // For now, does not send Game to Clients in order to avoid sending a lot of data. This could be an issue in the future. 
+    // For now, does not send GameBase to Clients in order to avoid sending a lot of data. This could be an issue in the future. 
     public async Task RestartGame()
     {
         Game.Restart();
@@ -184,7 +184,7 @@ public class GameHub<TGame, TPlayer> : Hub, IGameHubBase<TGame, TPlayer> where T
     }
 
     /// <summary>
-    /// Transition the game state from <see cref="GameStates.Setup"/> to <see cref="GameStates.Playing"/> and send the Game object to players
+    /// Transition the game state from <see cref="GameStates.Setup"/> to <see cref="GameStates.Playing"/> and send the GameBase object to players
     /// 
     /// <para>
     ///		<paramref name="argsJson"/> is an <see cref="object"/> of any <see cref="Type"/> that deriving classes

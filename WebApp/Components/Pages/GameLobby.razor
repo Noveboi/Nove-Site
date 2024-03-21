@@ -28,7 +28,7 @@
 	[Parameter]
 	public string GameTypeString { get; set; } = string.Empty;
 
-	List<GameModel<PlayerModel>>? games;
+	List<GameBase<PlayerModel>>? games;
 	GameHubProtocol Protocol => GameHubProtocol.Singleton;
 
 	HubConnection? hubConnection;
@@ -43,12 +43,12 @@
 
 			hubConnection.On<string>(Protocol[Receivers.GetGameList], async (gamesJson) =>
 			{
-				games = JsonConvert.DeserializeObject<List<GameModel<PlayerModel>>>(gamesJson);
+				games = JsonConvert.DeserializeObject<List<GameBase<PlayerModel>>>(gamesJson);
 				await InvokeAsync(StateHasChanged);
 			});
 			hubConnection.On<string>(Protocol[Receivers.UpdateGameList], async (gameJson) =>
 			{
-				var game = JsonConvert.DeserializeObject<GameModel<PlayerModel>>(gameJson)
+				var game = JsonConvert.DeserializeObject<GameBase<PlayerModel>>(gameJson)
 					?? throw new Exception("Deserialized into NULL game model!");
 				games?.Add(game);
 				await InvokeAsync(StateHasChanged);
@@ -68,7 +68,7 @@
 		}
 	}
 
-	async void GameClicked(GameModel<PlayerModel> game)
+	async void GameClicked(GameBase<PlayerModel> game)
 	{
 		if (hubConnection is not null)
 			await hubConnection.SendAsync(Protocol[Senders.ClientJoinGame], game.NameId);

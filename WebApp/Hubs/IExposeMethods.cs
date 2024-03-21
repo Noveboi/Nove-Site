@@ -1,12 +1,13 @@
-﻿using Games.Base.Game;
+﻿using Games.Base.GameModel;
 using Games.Base.Player;
+using Games.Base.PlayerModel;
 
 namespace WebApp.Hubs
 {
     /// <summary>
     /// Interface for hubs that inherit from GameHub
     /// </summary>
-    public interface IGameHub<TGame, TPlayer> : IGameHubBase<TGame, TPlayer> where TGame : GameModel<TPlayer> where TPlayer : PlayerModel
+    public interface IExposeMethods<TGame, TPlayer> : IGameHubBase<TGame, TPlayer> where TGame : GameBase where TPlayer : Player
     {
         /// <summary>
         /// Exposed method to client. For proper functionality you must call the 

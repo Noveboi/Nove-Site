@@ -8,10 +8,16 @@ public enum GameOverStates
 }
 public enum GameStates
 {
-	Setup,
 	Waiting,
+	Setup,
 	Playing,
 	Over
+}
+
+public enum GameEndedBy
+{
+	PlayerDisconnect,
+	WinOrTie
 }
 
 /// <summary>
@@ -52,4 +58,9 @@ public enum Senders
 	ReadyToConnect,
 	FinishSetup,
 	OtherPlayerConnected
+}
+
+public enum Items
+{
+	Symbol
 }

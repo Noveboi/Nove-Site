@@ -1,31 +1,57 @@
-﻿using Games.Base.Game;
+﻿using Games.Base;
+using Games.Base.GameModel;
+using Games.Base.Helpers;
+using Games.Base.PlayerModel;
+using Games.Base.TeamModel;
 
 namespace Games.TicTacToe;
-public class TicTacToeGame : GameModel<TicTacToePlayer>
+public class TicTacToeGame : GameBase, ICanWin, ITurnBased
 {
-    public TicTacToeGame() : base() { }
-    public TicTacToeGame(string name) : base(name) { }
-    public TicTacToeGame(IEnumerable<TicTacToePlayer> playerCollection) : base(playerCollection) { }
-	public TicTacToeGame(string name, IEnumerable<TicTacToePlayer> playerCollection) : base(name, playerCollection) { }
-
-    public override int PlayerCapacity => 2;
-
-    public TicTacToeBoardModel Board { get; set; } = new();
-
-	public override void Restart()
+	#region Constructors
+	internal TicTacToeGame(ITurnManager turnManager, IEnumerable<ITeam> teams) : base(teams)
 	{
-		base.Restart();
-		Board.Reset();
+		TurnManager = turnManager;
+		UniqueId = new(typeof(TicTacToeGame));
 	}
 
-	/// <summary>
-	/// Swap player turns
-	/// </summary>
-	public void NextTurn()
+	internal TicTacToeGame(ITurnManager turnManager, string name, IEnumerable<ITeam> teams) : base(name, teams)
 	{
-		bool player1Turn = Players[0].HasTurn;
-		Players[0].HasTurn = !player1Turn;
-		Players[1].HasTurn = player1Turn;
+		TurnManager = turnManager;
+		UniqueId = new(typeof(TicTacToeGame));
+	}
+	#endregion
+
+	public ITurnManager TurnManager { get; }
+	public override int PlayerCapacity => 2;
+	public override UniqueGameId UniqueId { get; }
+	public TicTacToeBoardModel Board { get; set; } = new();
+
+	public IPlayer TurnPlayer => TurnManager.PlayingTeam[0];
+
+	public event EventHandler<GameOverEventArgs>? GameOver;
+
+	public override void Setup()
+	{
+		State = GameStates.Setup;
+	}
+	public override void Start()
+	{
+		TurnManager.Activate(Teams);
+		State = GameStates.Playing;
+	}
+	public override void Restart(bool toSetup = false)
+	{
+		Board.Reset();
+		State = toSetup ? GameStates.Setup : GameStates.Playing;
+	}
+	public override void HandleEndByDisconnect()
+	{
+		// TODO: Invoke GameOver
+	}
+
+	public override void HandleEndByWinOrTie()
+	{
+		// TODO: Invoke GameOver
 	}
 
 	public bool IsTieState()
@@ -42,12 +68,15 @@ public class TicTacToeGame : GameModel<TicTacToePlayer>
 		return nonEmpty == 9;
 	}
 
-	public bool IsWinStateFor(TicTacToePlayer player)
+	public bool IsWinStateFor(ITeam team)
 	{
+		var player = team[0];
+		string symbol = (string)player.Storage[Items.Symbol];
+
 		// Horizontal Win
 		for (int i = 0; i < 3; i++)
 		{
-			if (Board[i, 0] == player.Symbol && Board[i, 1] == player.Symbol && Board[i, 2] == player.Symbol)
+			if (Board[i, 0] == symbol && Board[i, 1] == symbol && Board[i, 2] == symbol)
 			{
 				return true;
 			}
@@ -56,19 +85,27 @@ public class TicTacToeGame : GameModel<TicTacToePlayer>
 		// Vertical Win
 		for (int j = 0; j < 3; j++)
 		{
-			if (Board[0, j] == player.Symbol && Board[1, j] == player.Symbol && Board[2, j] == player.Symbol)
+			if (Board[0, j] == symbol && Board[1, j] == symbol && Board[2, j] == symbol)
 			{
 				return true;
 			}
 		}
 
 		// Diagonal Win
-		if ((Board[0, 0] == player.Symbol && Board[1, 1] == player.Symbol && Board[2, 2] == player.Symbol)
-		|| (Board[0, 2] == player.Symbol && Board[1, 1] == player.Symbol && Board[2, 0] == player.Symbol))
+		if ((Board[0, 0] == symbol && Board[1, 1] == symbol && Board[2, 2] == symbol)
+		|| (Board[0, 2] == symbol && Board[1, 1] == symbol && Board[2, 0] == symbol))
 		{
 			return true;
 		}
 
 		return false;
+	}
+
+	public void Mark(int i, int j)
+	{
+		string symbol = (string)TurnPlayer.Storage[Items.Symbol];
+
+		Board.Mark(symbol, i, j);
+		TurnManager.NextTurn();
 	}
 }

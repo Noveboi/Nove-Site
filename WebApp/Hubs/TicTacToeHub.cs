@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 using Serilog;
 
 namespace Games.Hubs;
-public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IGameHub<TicTacToeGame, TicTacToePlayer>
+public class TicTacToeHub : GameHub<TicTacToeGame, TicTacToePlayer>, IExposeMethods<TicTacToeGame, TicTacToePlayer>
 {
 	private static readonly List<TicTacToeGame> _games = [];
 	private static readonly Dictionary<string, TicTacToePlayer> _players = [];

@@ -12,7 +12,7 @@ using Serilog;
 using System.Net.NetworkInformation;
 using System.Collections.ObjectModel;
 using Games.Base.Player;
-using Games.Base.Game;
+using Games.Base.GameModel;
 using Microsoft.Extensions.DependencyInjection;
 using Games.Base;
 
@@ -24,7 +24,7 @@ namespace WebApp.Components;
 ///		with <see cref="GameHub{TGame, TPlayer}"/> instances as well as providing some basic variables such as <see cref="GameStates"/>
 /// </para>
 /// </summary>
-public class GameComponent<TGame, TPlayer> : ComponentBase, IAsyncDisposable where TPlayer : PlayerModel where TGame : GameModel<TPlayer>
+public class GameComponent<TGame, TPlayer> : ComponentBase, IAsyncDisposable where TPlayer : PlayerModel where TGame : GameBase<TPlayer>
 {
     [Inject]
     private NavigationManager NavManager { get; set; } = default!;
@@ -306,7 +306,7 @@ public class GameComponent<TGame, TPlayer> : ComponentBase, IAsyncDisposable whe
     }
 
     /// <summary>
-    /// Calls the <see cref="GameModel.Restart"/> method and forces UI re-render
+    /// Calls the <see cref="GameBase.Restart"/> method and forces UI re-render
     /// </summary>
     /// <returns></returns>
     protected virtual async Task OnRestartGame()
@@ -343,7 +343,7 @@ public class GameComponent<TGame, TPlayer> : ComponentBase, IAsyncDisposable whe
     }
 
     /// <summary>
-    /// This method will fire when ANOTHER player has connected to the <see cref="GameModel"/> that the client is 
+    /// This method will fire when ANOTHER player has connected to the <see cref="GameBase"/> that the client is 
     /// currently in.
     /// <para>
     /// IMPORTANT NOTE: This method does NOT send the player object to the <see cref="Hub"/>! (Using Senders.OtherPlayerConnected)
